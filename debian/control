@@ -1,4 +1,4 @@
-Source: jolicloud-display
+Source: jolicloud-displaymanager
 Section: jolicloud/system
 Priority: optional
 Maintainer: Arnaud Vallat <arnaud@jolicloud.org>
