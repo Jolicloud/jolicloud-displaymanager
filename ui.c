@@ -15,12 +15,16 @@ static JSGlobalContextRef g_uiJSGlobalContext = NULL;
 static JSValueRef g_uiJSCallbackValue = NULL;
 static JSObjectRef g_uiJSCallback = NULL;
 
+static JSValueRef g_uiJSCapslockCallbackValue = NULL;
+static JSObjectRef g_uiJSCapslockCallback = NULL;
 
 static sign_in_callback g_uiSignInCallback = NULL;
 
 
 static gboolean _ui_main_window_delete_event(GtkWidget* widget, GdkEvent* event,
 					     void* context);
+static void _ui_keymap_state_changed(GdkKeymap* keymap, void* context);
+
 static void _uibind_objects(WebKitWebView* webkitWebView,
 			    WebKitWebFrame* webkitWebFrame,
 			    JSGlobalContextRef context,
@@ -33,6 +37,7 @@ gboolean ui_init(sign_in_callback signinCallback)
 {
   GdkDisplay* display;
   GdkScreen* screen;
+  GdkKeymap* keymap;
   gint screenWidth;
   gint screenHeight;
 
@@ -48,6 +53,11 @@ gboolean ui_init(sign_in_callback signinCallback)
   screen = gdk_display_get_default_screen(display);
   screenWidth = gdk_screen_get_width(screen);
   screenHeight = gdk_screen_get_height(screen);
+
+  keymap = gdk_keymap_get_for_display(display);
+  if (keymap != NULL)
+    g_signal_connect(G_OBJECT(keymap), "state-changed",
+		     G_CALLBACK(_ui_keymap_state_changed), NULL);
 
   g_uiMainWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_window_set_default_size(GTK_WINDOW(g_uiMainWindow), screenWidth, screenHeight);
@@ -109,10 +119,18 @@ void ui_cleanup(void)
   if (g_uiJSCallbackValue != NULL)
     {
       JSValueUnprotect(g_uiJSGlobalContext, g_uiJSCallbackValue);
-      g_uiJSGlobalContext = NULL;
       g_uiJSCallbackValue = NULL;
       g_uiJSCallback = NULL;
     }
+
+  if (g_uiJSCapslockCallbackValue != NULL)
+    {
+      JSValueUnprotect(g_uiJSGlobalContext, g_uiJSCapslockCallbackValue);
+      g_uiJSCapslockCallbackValue = NULL;
+      g_uiJSCapslockCallback = NULL;
+    }
+
+  g_uiJSGlobalContext = NULL;
 
   gtk_widget_destroy(g_uiMainWindow);
 
@@ -196,6 +214,26 @@ static gboolean _ui_main_window_delete_event(GtkWidget* widget, GdkEvent* event,
   /* prevent user from closing the window
    */
   return TRUE;
+}
+
+
+static void _ui_keymap_state_changed(GdkKeymap* keymap, void* context)
+{
+  JSValueRef jsCapslockStatus = NULL;
+
+  if (keymap == NULL || g_uiJSCapslockCallback == NULL || g_uiJSGlobalContext == NULL)
+    return;
+
+  jsCapslockStatus = JSValueMakeBoolean(g_uiJSGlobalContext,
+					(bool)(gdk_keymap_get_caps_lock_state(keymap)));
+  if (jsCapslockStatus == NULL)
+    return;
+
+  JSObjectCallAsFunction(g_uiJSGlobalContext,
+			 g_uiJSCapslockCallback,
+			 NULL,
+			 1, &jsCapslockStatus,
+			 NULL);
 }
 
 
@@ -324,14 +362,49 @@ js_jolicloud_sign_in(JSContextRef jsContext,
 }
 
 
+static JSValueRef
+js_jolicloud_add_event_listener(JSContextRef jsContext,
+				JSObjectRef function,
+				JSObjectRef thisObject,
+				size_t argumentCount,
+				const JSValueRef arguments[],
+				JSValueRef* exception)
+{
+  char* eventName = NULL;
+  JSObjectRef callback = NULL;
+
+  if (argumentCount != 3)
+    goto end;
+
+  eventName = js_value_to_string(jsContext, arguments[0], MAX_ENTRY_LENGTH);
+  callback = js_value_to_function(jsContext, arguments[1]);
+
+  if (eventName == NULL || callback == NULL || strcasecmp(eventName, "capslock"))
+    {
+      if (eventName != NULL)
+	g_free(eventName);
+      goto end;
+    }
+
+  g_uiJSCapslockCallbackValue = arguments[1];
+  g_uiJSCapslockCallback = callback;
+
+  _ui_keymap_state_changed(gdk_keymap_get_for_display(gdk_display_get_default()), NULL);
+
+  JSValueProtect(jsContext, arguments[1]);
+
+  g_free(eventName);
+
+ end:
+  return JSValueMakeNull(jsContext);
+}
+
+
 static JSValueRef js_jolicloud_guestmode_get(JSContextRef jsContext,
 					     JSObjectRef thisObject,
 					     JSStringRef propertyName,
 					     JSValueRef* exception)
 {
-  fprintf(stderr, "Jolicloud-DisplayManager: requesting guestmode property [%s]\n",
-	  (config_guest_logincmd_get() == NULL) ? "false" : "true");
-
   if (config_guest_logincmd_get() == NULL)
     return JSValueMakeBoolean(jsContext, false);
   return JSValueMakeBoolean(jsContext, true);
@@ -346,7 +419,8 @@ static const JSStaticValue jolicloudValues[] =
 
 static const JSStaticFunction jolicloudFunctions[] =
   {
-    { "sign_in", js_jolicloud_sign_in, kJSPropertyAttributeReadOnly },
+    { "signIn", js_jolicloud_sign_in, kJSPropertyAttributeReadOnly },
+    { "addEventListener", js_jolicloud_add_event_listener, kJSPropertyAttributeReadOnly },
     { NULL, NULL, 0 }
   };
 
@@ -359,6 +433,7 @@ static const JSClassDefinition jolicloudDefinition =
     jolicloudValues,
     jolicloudFunctions,
   };
+
 
 static void _uibind_objects(WebKitWebView* webkitWebView,
 			    WebKitWebFrame* webkitWebFrame,

@@ -39,7 +39,10 @@
                 var guestPanel = document.querySelector('#guest-panel');
                 var signInLocal = document.querySelector('#local');
                 var signInGuest = document.querySelector('#sign-in-guest');
-                
+                // Shit to handle capslock
+                var capslockState = true;
+                var passwordHasFocus = false;
+
                 if (typeof jolicloud != "undefined" && !jolicloud.guestmode) {
                     document.getElementsByTagName('ul')[0].className = 'no-guestmode';
                 }
@@ -47,7 +50,18 @@
                 // Disable Right-click
                 document.addEventListener('contextmenu', function(event) {
                     event.preventDefault();
-                });
+                }, false);
+                
+                // Handle capslock
+                jolicloud.addEventListener('capslock', function(state) {
+                    capslockState = state;
+
+                    if (passwordHasFocus && capslockState) {
+                        document.querySelector('#local-panel input[type="password"]').className = 'capslock';
+                    } else {
+                        document.querySelector('#local-panel input[type="password"]').className = '';
+                    }
+                }, false);
 
                 var shakeWindow = function shakeWindow() {
                     document.querySelector("#container").className = 'shake';
@@ -123,7 +137,7 @@
 
                     if (username.value != '') {
                         disableForm();
-                        jolicloud.sign_in(username.value, password.value, function(status) {
+                        jolicloud.signIn(username.value, password.value, function(status) {
                             if (status == 0) {
                                 // WIN
                             } else {
@@ -139,12 +153,12 @@
                     event.preventDefault();
                     event.stopPropagation();
                     return false;
-                });
+                }, false);
 
                 // Handle the click on "Sign in as Guest" button
                 signInGuest.addEventListener('click', function(event) {
                     disableForm();
-                    jolicloud.sign_in('guest', '', function(status) {
+                    jolicloud.signIn('guest', '', function(status) {
                         if (status == 0) {
                             // WIN
                         } else {
@@ -153,7 +167,7 @@
                             // TODO Display an error…
                         }
                     });
-                });
+                }, false);
 
                 var inputs = document.querySelectorAll('#local-panel input[type="text"], #local-panel input[type="password"]');
                 for (var i = 0, total = inputs.length; i < total; i++) {
@@ -161,7 +175,7 @@
                     inputs[i].addEventListener('keypress', function(event) {
                         document.querySelector("#error").style.opacity = '0';
                         document.querySelector("#error").style.display = 'none';
-                    });
+                    }, false);
                     
                     // If we press "Esc", clean the form
                     inputs[i].addEventListener('keydown', function(event) {
@@ -170,8 +184,22 @@
                             password.value = '';
                             username.focus();
                         }
-                    });
+                    }, false);
                 }
+                
+                // Check capslock's state
+                document.querySelector('#local-panel input[type="password"]').addEventListener('focus', function(event) {
+                    passwordHasFocus = true;
+                    if (capslockState) {
+                        this.className = 'capslock';
+                    }
+                }, false);
+                
+                // Remove capslock hint
+                document.querySelector('#local-panel input[type="password"]').addEventListener('blur', function(event) {
+                    passwordHasFocus = false;
+                    this.className = '';
+                }, false);
             };
         })();
     </script>
