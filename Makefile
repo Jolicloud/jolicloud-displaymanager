@@ -44,12 +44,12 @@ re: clean all
 install: $(NAME) install-theme
 	install -D -m 755 $(NAME) $(DESTDIR)$(PREFIX)/bin/$(NAME)
 	test -e $(DESTDIR)/$(CFGDIR)/jolicloud-displaymanager/01Standard || \
-		install -D -m 644 jolicloud-displaymanager/01Standard $(DESTDIR)/$(CFGDIR)/jolicloud-displaymanager/01Standard
+		install -D -m 644 config/01Standard $(DESTDIR)/$(CFGDIR)/jolicloud-displaymanager/01Standard
 
 dist:
 	@rm -rf $(NAME)-$(VERSION)
 	@mkdir $(NAME)-$(VERSION)
-	@cp -r *.[ch] Makefile jolicloud-displaymanager themes $(NAME)-$(VERSION)
+	@cp -r *.[ch] Makefile config themes $(NAME)-$(VERSION)
 	@tar cvzf $(NAME)-$(VERSION).tar.gz $(NAME)-$(VERSION)
 	@rm -rf $(NAME)-$(VERSION)
 
