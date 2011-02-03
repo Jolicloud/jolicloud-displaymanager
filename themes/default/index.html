@@ -155,12 +155,21 @@
                     });
                 });
 
-                // Hide the error only when input's content has changed
                 var inputs = document.querySelectorAll('#local-panel input[type="text"], #local-panel input[type="password"]');
                 for (var i = 0, total = inputs.length; i < total; i++) {
+                    // Hide the error only when input's content has changed
                     inputs[i].addEventListener('keypress', function(event) {
                         document.querySelector("#error").style.opacity = '0';
                         document.querySelector("#error").style.display = 'none';
+                    });
+                    
+                    // If we press "Esc", clean the form
+                    inputs[i].addEventListener('keydown', function(event) {
+                        if (event.keyCode == 27) {
+                            username.value = '';
+                            password.value = '';
+                            username.focus();
+                        }
                     });
                 }
             };
