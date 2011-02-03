@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <signal.h>
 #include "displaymanager.h"
 #include "config.h"
 #include "locker.h"
@@ -18,6 +19,8 @@
 
 
 static char* g_dmConfigurationPath = NULL;
+
+static void _dm_signal_handler(int signal);
 
 static gboolean _dm_arguments_parse(int ac, char** av);
 static void _dm_pam_callback(PAM_CREDENTIAL_ITEM_TYPE credentialItemType, char** item);
@@ -75,14 +78,22 @@ gboolean dm_init(int ac, char** av)
   if (session_init(_dm_session_started, _dm_session_closed) == FALSE)
     goto onSessionInitError;
 
-  /* FIXME: handle signals
-   */
-
   /* start X
    */
   if (xserver_init(display) == FALSE)
     goto onXServerInitError;
 
+  /* handle signals
+   */
+  signal(SIGQUIT, _dm_signal_handler);
+  signal(SIGTERM, _dm_signal_handler);
+  signal(SIGKILL, _dm_signal_handler);
+  signal(SIGINT, _dm_signal_handler);
+  signal(SIGHUP, _dm_signal_handler);
+  signal(SIGPIPE, _dm_signal_handler);
+
+  /* The thing bellow should never disappear!
+   */
   {
     int ret = system("/bin/plymouth quit --retain-splash");
     if (WIFEXITED(ret))
@@ -155,6 +166,9 @@ void dm_cleanup(void)
 {
   ui_cleanup();
 
+  /* FIXME: Should we close any running session properly?
+   */
+
   xserver_cleanup();
   session_cleanup();
   pam_cleanup();
@@ -167,6 +181,21 @@ void dm_cleanup(void)
 
 
 /* privates */
+
+
+static void _dm_signal_handler(int signal)
+{
+  fprintf(stderr, "Jolicloud-DisplayManager: signal received %d. Terminating...\n", signal);
+
+  /* FIXME: Should we close any running session properly?
+   */
+
+  xserver_cleanup();
+  session_cleanup();
+
+  exit(1);
+}
+
 
 static void _dm_usage(void)
 {

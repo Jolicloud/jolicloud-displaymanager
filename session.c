@@ -254,7 +254,6 @@ gboolean session_run(const struct passwd* passwdEntry)
 }
 
 
-
 /* privates
  */
 

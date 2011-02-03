@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 #include <X11/Xlib.h>
 
 
@@ -63,6 +64,13 @@ static void _xserver_start(const char* display)
 {
   const char* av[32] = { 0, };
   int ac = 0;
+
+  /* FIXME: close log?
+   */
+
+  signal(SIGTTIN, SIG_IGN);
+  signal(SIGTTOU, SIG_IGN);
+  signal(SIGUSR1, SIG_IGN);
 
   /* TODO: grab the following from config
    */
