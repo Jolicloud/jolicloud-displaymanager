@@ -179,12 +179,21 @@ static void _dm_usage(void)
 
 static gboolean _dm_arguments_parse(int ac, char** av)
 {
+  /* FIXME: arguments was handled as a Quick&Dirty. Do it the right way!
+   */
+
   if (ac == 1)
     {
-      g_dmConfigurationPath = strdup("/etc/jolicloud-dm");
+      g_dmConfigurationPath = strdup(SYSCONFDIR);
       if (g_dmConfigurationPath == NULL)
 	return FALSE;
       return TRUE;
+    }
+
+  if (ac == 2 && !strcmp(av[1], "--version"))
+    {
+      printf("%s %s\n", PACKAGE, VERSION);
+      return FALSE;
     }
 
   if (ac != 3

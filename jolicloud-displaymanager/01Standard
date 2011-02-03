@@ -1,0 +1,18 @@
+[internals]
+lockfile=/var/run/jolicloud-displaymanager.pid
+logfile=/var/log/jolicloud-displaymanager.log
+
+[xserver]
+xauth=/usr/bin/xauth
+xauthfile=/var/run/jolicloud-displaymanager.auth
+xserver=/usr/bin/X11/X
+xserverargs=-nolisten tcp vt07
+sessreg=/usr/bin/sessreg
+
+[theme]
+url=file:///home/rno/htdocs/index.html#local
+
+[user]
+path=/usr/local/sbin:/usr/local/bin:/usr/bin/X11:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+logincmd=exec /bin/bash -login /etc/X11/Xsession default
+

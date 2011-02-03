@@ -1,0 +1,80 @@
+# jolicloud-displaymanager - Jolicloud Display Manager
+
+description	"Jolicloud Display Manager"
+author		"Arnaud Vallat <arnaud@jolicloud.org>"
+
+start on (filesystem
+          and (graphics-device-added fb0 PRIMARY_DEVICE_FOR_DISPLAY=1
+               or drm-device-added card0 PRIMARY_DEVICE_FOR_DISPLAY=1
+               or stopped udevtrigger))
+stop on runlevel [016]
+
+emits starting-dm
+kill timeout 3
+respawn
+
+env XORGCONFIG=/etc/X11/xorg.conf
+
+script
+    if [ -n "$UPSTART_EVENTS" ]
+    then
+	[ ! -f /etc/X11/default-display-manager -o "$(cat /etc/X11/default-display-manager 2>/dev/null)" = "/usr/bin/jolicloud-displaymanager" ] || { stop; exit 0; }
+
+	# Check kernel command-line for inhibitors
+	for ARG in $(cat /proc/cmdline)
+	do
+	    case "${ARG}" in
+		text|-s|s|S|single)
+		    initctl emit starting-dm DM=none
+		    plymouth quit --retain-splash || :  # We have the ball here
+		    exit 0
+		    ;;
+	    esac
+	done
+    fi
+
+    if [ -r /etc/default/locale ]; then
+	. /etc/default/locale
+	export LANG LANGUAGE
+    elif [ -r /etc/environment ]; then
+	. /etc/environment
+	export LANG LANGUAGE
+    fi
+    export XORGCONFIG
+
+    # "Auto rotate" jolicloud-displaymanager log file
+    if [ -e /var/log/jolicloud-displaymanager.log.5 ]; then
+        rm /var/log/jolicloud-displaymanager.log.5
+    fi
+    if [ -e /var/log/jolicloud-displaymanager.log.4 ]; then
+        mv /var/log/jolicloud-displaymanager.log.4 /var/log/jolicloud-displaymanager.log.5
+    fi
+    if [ -e /var/log/jolicloud-displaymanager.log.3 ]; then
+        mv /var/log/jolicloud-displaymanager.log.3 /var/log/jolicloud-displaymanager.log.4
+    fi
+    if [ -e /var/log/jolicloud-displaymanager.log.2 ]; then
+        mv /var/log/jolicloud-displaymanager.log.2 /var/log/jolicloud-displaymanager.log.3
+    fi
+    if [ -e /var/log/jolicloud-displaymanager.log.1 ]; then
+        mv /var/log/jolicloud-displaymanager.log.1 /var/log/jolicloud-displaymanager.log.2
+    fi
+    if [ -e /var/log/jolicloud-displaymanager.log ]; then
+        mv /var/log/jolicloud-displaymanager.log /var/log/jolicloud-displaymanager.log.1
+    fi
+
+    # Kill off any stagnant X processes, incase jolicloud-displaymanager is being restarted and
+    # a stagnant X (on vt01) session is still active.
+    if pgrep -cf '/usr/bin/X11/X.*jolicloud-displaymanager\.auth'; then
+        pkill -15 -f '/usr/bin/X11/X.*jolicloud-displaymanager\.auth' || :
+        sleep 1;
+    fi
+
+    # FIXME: Temporary workaround to avoid sync issue on jolicloud-displaymanager startup.
+    # Something in the early stages of rc2 is colliding with the keyboard
+    # interrupt in jolicloud-displaymanager, causing some key presses to be ignored. Need to
+    # diagnose.
+    # sleep 2
+
+    initctl emit starting-dm DM=jolicloud-displaymanager
+    exec jolicloud-displaymanager
+end script

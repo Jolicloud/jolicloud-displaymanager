@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Jolicloud OS</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="container">
+        <header>
+            <img src="logo.png" />
+            <hgroup>
+                <h1>Jolicloud OS</h1>
+                <h2>Version 1.2</h2>
+            </hgroup>
+        </header>
+        <section>
+            <ul>
+                <li><a id="local-link" class="selected">Local User</a></li>
+                <li><a id="guest-link">Guest</a></li>
+            </ul>
+            <form action="#" id="local-panel">
+                <label for="username"><span>Username</span><input type="text" id="username" autocomplete="off"></label>
+                <label for="password"><span>Password</span><input type="password" id="password"><strong id="error">Incorrect username or password.</strong></label>
+                <p class="submit"><input type="submit" value="Sign in" id="sign-in"></p>
+            </form>
+            <div id="guest-panel">
+                <p>Lorem lipsum dolor sit amet. Lorem lipsum dolor sit amet.</p>
+                <p class="submit"><button class="button" id="sign-in-guest">Sign in as Guest</button></p>
+            </div>
+        </section>
+    </div>
+    <script>
+        (function() {
+            window.onload = function() {
+                var localLink = document.querySelector('#local-link');
+                var guestLink = document.querySelector('#guest-link');
+                var localPanel = document.querySelector('#local-panel');
+                var guestPanel = document.querySelector('#guest-panel');
+                var signInLocal = document.querySelector('#local');
+                var signInGuest = document.querySelector('#sign-in-guest');
+                
+                if (typeof jolicloud != "undefined" && !jolicloud.guestmode) {
+                    document.getElementsByTagName('ul')[0].className = 'no-guestmode';
+                }
+
+                // Disable Right-click
+                document.addEventListener('contextmenu', function(event) {
+                    event.preventDefault();
+                });
+
+                var shakeWindow = function shakeWindow() {
+                    document.querySelector("#container").className = 'shake';
+                    document.querySelector("#error").style.display = 'block';
+                    document.querySelector("#error").style.opacity = '1';
+                    setTimeout(function() {
+                        document.querySelector("#container").className = '';
+                    }, 400);
+                };
+
+                var disableForm = function disableForm() {
+                    document.querySelector('#sign-in').setAttribute('disabled', '');
+                    document.querySelector('#sign-in-guest').setAttribute('disabled', '');
+                    document.querySelector('#username').setAttribute('disabled', '');
+                    document.querySelector('#password').setAttribute('disabled', '');
+                };
+
+                var enableForm = function enableForm() {
+                    document.querySelector('#sign-in').removeAttribute('disabled');
+                    document.querySelector('#sign-in-guest').removeAttribute('disabled');
+                    document.querySelector('#username').removeAttribute('disabled');
+                    document.querySelector('#password').removeAttribute('disabled');
+                };
+
+                // Put the focus on the username field
+                document.querySelector('#username').focus();
+
+                // Handle the click on "Local user" link
+                localLink.addEventListener('click', function(event) {
+                    localLink.className = 'selected';
+                    localPanel.style.display= 'block';
+                    localPanel.style.opacity= '1';
+                    localPanel.style.zIndex= '1';
+                    guestLink.className = '';
+                    guestPanel.style.opacity= '0';
+                    guestPanel.style.zIndex= '0';
+                    setTimeout(function() {
+                        guestPanel.style.display= 'none';
+                    }, 200);
+                    document.querySelector('#username').focus();
+                }, false);
+
+                // Handle the click on "Guest" link
+                guestLink.addEventListener('click', function(event) {
+                    guestLink.className = 'selected';
+                    guestPanel.style.display= 'block';
+                    guestPanel.style.opacity= '1';
+                    guestPanel.style.zIndex= '1';
+                    localLink.className = '';
+                    localPanel.style.opacity= '0';
+                    localPanel.style.zIndex= '0';
+                    setTimeout(function() {
+                        localPanel.style.display= 'none';
+                    }, 200);
+                }, false);
+
+                // Handle the submit of the sign-in form
+                localPanel.addEventListener('submit', function(event) {
+                    var username = document.querySelector('#username');
+                    var password = document.querySelector('#password');
+
+                    // Unselect the two inputs
+                    var inputs = document.querySelectorAll('#local-panel input[type="text"], #local-panel input[type="password"]');
+                    for (var i = 0, total = inputs.length; i < total; i++) {
+                        inputs[i].blur();
+                    }
+
+                    // If there is an error, shake the window and display an error message
+                    if (username.value == '') {
+                        shakeWindow();
+                        password.value = '';
+                    }
+
+                    if (username.value != '') {
+                        disableForm();
+                        jolicloud.sign_in(username.value, password.value, function(status) {
+                            if (status == 0) {
+                                // WIN
+                            } else {
+                                shakeWindow();
+                                enableForm();
+                                username.value = '';
+                                password.value = '';
+                                username.focus();
+                            }
+                        });
+                    }
+
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return false;
+                });
+
+                // Handle the click on "Sign in as Guest" button
+                signInGuest.addEventListener('click', function(event) {
+                    disableForm();
+                    jolicloud.sign_in('guest', '', function(status) {
+                        if (status == 0) {
+                            // WIN
+                        } else {
+                            shakeWindow();
+                            enableForm();
+                            // TODO Display an error…
+                        }
+                    });
+                });
+
+                // Hide the error only when input's content has changed
+                var inputs = document.querySelectorAll('#local-panel input[type="text"], #local-panel input[type="password"]');
+                for (var i = 0, total = inputs.length; i < total; i++) {
+                    inputs[i].addEventListener('keypress', function(event) {
+                        document.querySelector("#error").style.opacity = '0';
+                        document.querySelector("#error").style.display = 'none';
+                    });
+                }
+            };
+        })();
+    </script>
+</body>
+</html>
