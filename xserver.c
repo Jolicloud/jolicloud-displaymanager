@@ -1,0 +1,108 @@
+#include <glib/gtypes.h>
+#include "xserver.h"
+#include "config.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+#include <unistd.h>
+#include <X11/Xlib.h>
+
+
+static pid_t g_xserverPid = 0;
+
+
+static void _xserver_start(const char* display);
+static gboolean _xserver_wait_ready(const char* display);
+
+
+gboolean xserver_init(const char* display)
+{
+  if (g_xserverPid != 0)
+    {
+      fprintf(stderr, "Jolicloud-DisplayManager: XServer already initialized\n");
+      return FALSE;
+    }
+
+  g_xserverPid = fork();
+
+  if (g_xserverPid == -1)
+    {
+      fprintf(stderr, "Jolicloud-DisplayManager: Unable to fork for starting X.Org. [%s]\n",
+	      strerror(errno));
+      return FALSE;
+    }
+
+  if (g_xserverPid == 0)
+    {
+      _xserver_start(display);
+      /* this return should never been reached */
+      return FALSE;
+    }
+
+  if (_xserver_wait_ready(display) == FALSE)
+    {
+      fprintf(stderr, "Jolicloud-DisplayManager: X.Org failed to start. See X.Org log messages for more information\n");
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+
+void xserver_cleanup(void)
+{
+
+}
+
+
+/* privates
+ */
+
+static void _xserver_start(const char* display)
+{
+  const char* av[32] = { 0, };
+  int ac = 0;
+
+  /* TODO: grab the following from config
+   */
+
+  av[ac++] = "/usr/bin/X";
+  av[ac++] = ":0";
+  av[ac++] = "-verbose";
+  av[ac++] = "-auth";
+  av[ac++] = config_xauthfile_path_get();
+  av[ac++] = "-nolisten";
+  av[ac++] = "tcp";
+  av[ac++] = "vt01";
+
+  setpgid(0, getpid());
+
+  execvp(av[0], (char **)av);
+
+  fprintf(stderr, "Jolicloud-DisplayManager: Unable to start X.Org [%s]\n",
+	  strerror(errno));
+
+  exit(0);
+}
+
+
+static gboolean _xserver_wait_ready(const char* display)
+{
+  Display* displayHandle = NULL;
+  int max = 3;
+  int i = 0;
+
+  while (i < max && (displayHandle = XOpenDisplay(display)) == NULL)
+    {
+      fprintf(stderr, "Jolicloud-DisplayManager: X.Org is still not ready. Waiting 1s\n");
+      ++i;
+      sleep(1);
+    }
+
+  if (displayHandle == NULL)
+    return FALSE;
+
+  XCloseDisplay(displayHandle);
+  return TRUE;
+}
