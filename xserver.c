@@ -73,9 +73,9 @@ static void _xserver_start(const char* display)
   /* FIXME: close log?
    */
 
-  signal(SIGTTIN, SIG_IGN);
-  signal(SIGTTOU, SIG_IGN);
-  signal(SIGUSR1, SIG_IGN);
+  /* signal(SIGTTIN, SIG_IGN); */
+  /* signal(SIGTTOU, SIG_IGN); */
+  /* signal(SIGUSR1, SIG_IGN); */
 
   av[ac++] = config_xserver_path_get();
   av[ac++] = ":0";

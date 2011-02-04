@@ -86,12 +86,12 @@ gboolean dm_init(int ac, char** av)
 
   /* handle signals
    */
-  signal(SIGQUIT, _dm_signal_handler);
-  signal(SIGTERM, _dm_signal_handler);
-  signal(SIGKILL, _dm_signal_handler);
-  signal(SIGINT, _dm_signal_handler);
-  signal(SIGHUP, _dm_signal_handler);
-  signal(SIGPIPE, _dm_signal_handler);
+  /* signal(SIGQUIT, _dm_signal_handler); */
+  /* signal(SIGTERM, _dm_signal_handler); */
+  /* signal(SIGKILL, _dm_signal_handler); */
+  /* signal(SIGINT, _dm_signal_handler); */
+  /* signal(SIGHUP, _dm_signal_handler); */
+  /* signal(SIGPIPE, _dm_signal_handler); */
 
   /* The thing bellow should never disappear!
    */
