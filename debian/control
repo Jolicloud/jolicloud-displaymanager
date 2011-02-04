@@ -2,14 +2,14 @@ Source: jolicloud-displaymanager
 Section: jolicloud/system
 Priority: optional
 Maintainer: Arnaud Vallat <arnaud@jolicloud.org>
-Build-Depends: libpam0g-dev, libwebkit-dev
+Build-Depends: debhelper (>= 5), libpam0g-dev, libwebkit-dev
 Standards-Version: 3.9.1.0
 Homepage: http://www.jolicloud.com
 
 Package: jolicloud-displaymanager
 Architecture: any
 Provides: x-display-manager
-Depends: ${shlibs:Depends}, ${misc:Depends}, debconf (>= 1.2.9) | debconf-2.0, libpam0g, libwebkit-1.0-2
+Depends: ${shlibs:Depends}, ${misc:Depends}, libpam0g, libwebkit-1.0-2
 Description: Jolicloud Display Manager
  This package includes an HTML5 Display Manager.
 
