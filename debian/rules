@@ -39,21 +39,19 @@ binary-indep:
 binary-arch: build install
 	dh_testdir
 	dh_testroot
-#	dh_installchangelogs ChangeLog
 	dh_installdocs
 	dh_installdebconf
 	dh_installlogrotate
 	dh_installinit --no-restart-on-upgrade --no-start --update-rcd-params="start 99 2 3 4 5 . stop 1 0 1 6 ."
 	dh_installman
-	# dh_installpam --name slim
-	# dh_installpam --name slim-autologin
+	dh_installpam --name jolicloud-displaymanager
+	dh_installpam --name jolicloud-displaymanager-autologin
 	dh_install
 	dh_link
 	dh_strip
 	dh_compress
 	dh_fixperms
 	dh_installdeb
-	# rm -f debian/slim/DEBIAN/conffiles
 	dh_shlibdeps
 	dh_gencontrol
 	dh_md5sums
