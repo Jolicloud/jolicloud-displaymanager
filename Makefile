@@ -27,8 +27,8 @@ DEFINES	=	-DPACKAGE=\"$(NAME)\"						\
 		-DPKGDATADIR=\"$(PREFIX)/share/jolicloud-displaymanager\"	\
 		-DSYSCONFDIR=\"$(CFGDIR)/jolicloud-displaymanager\"
 
-CFLAGS	=	`pkg-config --cflags webkit-1.0` -Wall $(DEFINES) -g3
-LDFLAGS	=	`pkg-config --libs webkit-1.0` -lpam
+CFLAGS	=	`pkg-config --cflags webkit-1.0 x11` -Wall $(DEFINES) -g3
+LDFLAGS	=	`pkg-config --libs webkit-1.0 x11` -lpam
 
 
 all: $(NAME)
