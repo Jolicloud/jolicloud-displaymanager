@@ -1,4 +1,4 @@
-#include <glib/gtypes.h>
+#include <glib.h>
 #include "xserver.h"
 #include "config.h"
 #include <stdio.h>
@@ -11,10 +11,12 @@
 
 
 static pid_t g_xserverPid = 0;
-
+static guint g_xserverPidWatcherId = 0;
 
 static void _xserver_start(const char* display);
 static gboolean _xserver_wait_ready(const char* display);
+
+static void _xserver_pid_watcher(GPid pid, gint status, void* context);
 
 
 gboolean xserver_init(const char* display)
@@ -41,6 +43,8 @@ gboolean xserver_init(const char* display)
       return FALSE;
     }
 
+  g_xserverPidWatcherId = g_child_watch_add(g_xserverPid, _xserver_pid_watcher, NULL);
+
   if (_xserver_wait_ready(display) == FALSE)
     {
       fprintf(stderr, "Jolicloud-DisplayManager: X.Org failed to start. See X.Org log messages for more information\n");
@@ -62,6 +66,7 @@ void xserver_cleanup(void)
 
 static void _xserver_start(const char* display)
 {
+  gchar** xserverArgs = NULL;
   const char* av[32] = { 0, };
   int ac = 0;
 
@@ -72,17 +77,19 @@ static void _xserver_start(const char* display)
   signal(SIGTTOU, SIG_IGN);
   signal(SIGUSR1, SIG_IGN);
 
-  /* TODO: grab the following from config
-   */
-
-  av[ac++] = "/usr/bin/X";
+  av[ac++] = config_xserver_path_get();
   av[ac++] = ":0";
-  av[ac++] = "-verbose";
   av[ac++] = "-auth";
   av[ac++] = config_xauthfile_path_get();
-  av[ac++] = "-nolisten";
-  av[ac++] = "tcp";
-  av[ac++] = "vt01";
+
+  xserverArgs = g_strsplit(config_xserverargs_get(), " ", 0);
+  if (xserverArgs != NULL)
+    {
+      int i;
+
+      for (i = 0; ac < 30 && xserverArgs[i]; ++i)
+	av[ac++] = xserverArgs[i];
+    }
 
   setpgid(0, getpid());
 
@@ -113,4 +120,13 @@ static gboolean _xserver_wait_ready(const char* display)
 
   XCloseDisplay(displayHandle);
   return TRUE;
+}
+
+
+static void _xserver_pid_watcher(GPid pid, gint status, void* context)
+{
+  g_xserverPidWatcherId = 0;
+  g_xserverPid = 0;
+
+  fprintf(stderr, "Jolicloud-DisplayManager: X closed with status %d\n", status);
 }

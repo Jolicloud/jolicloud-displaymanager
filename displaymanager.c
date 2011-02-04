@@ -104,8 +104,7 @@ gboolean dm_init(int ac, char** av)
 
   gtk_init(&ac, &av);
 
-  defaultLogin = config_autologin_get();
-  if (defaultLogin != NULL)
+  if (config_autologin_enabled() == TRUE && (defaultLogin = config_autologin_login_get()) != NULL)
     {
       fprintf(stderr, "Jolicloud-DisplayManager: Autologin requested for user '%s'\n", defaultLogin);
 
@@ -275,6 +274,12 @@ static void _dm_session_started(void)
 static void _dm_session_closed(void)
 {
   pam_session_close();
+
+  if (config_load(g_dmConfigurationPath) == FALSE)
+    {
+      fprintf(stderr, "Jolicloud-DisplayManager: Internal Error: Configuration is broken!\n");
+      exit(1);
+    }
 
   ui_init(_dm_sign_in);
 }

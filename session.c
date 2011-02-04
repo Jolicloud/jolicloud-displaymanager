@@ -29,6 +29,8 @@ static gboolean _session_cookie_add(const char* display,
 static void _session_watcher(GPid pid, gint status, void* context);
 static gboolean _session_started(void* context);
 
+static gboolean _session_user_information_set(const struct passwd* passwdEntry);
+static const char* _session_logincmd_get(const struct passwd* passwdEntry);
 
 gboolean session_init(session_callback sessionStartedCallback,
 		      session_callback sessionClosedCallback)
@@ -89,7 +91,6 @@ gboolean session_run(const struct passwd* passwdEntry)
   gchar* tmp = NULL;
   gchar** userEnv = NULL;
   int i = 0;
-  FILE* o = NULL;
   const char* loginCmd = NULL;
 
   if (g_sessionPid != 0)
@@ -114,41 +115,17 @@ gboolean session_run(const struct passwd* passwdEntry)
       return TRUE;
     }
 
-  o = fopen("/var/log/jolicloud-displaymanager-session.log", "a");
-
   /* set up user information
    */
-  if (initgroups(passwdEntry->pw_name, passwdEntry->pw_gid) != 0)
-    {
-      fprintf(o, "Jolicloud-DisplayManager: initgroups failed [%s]\n",
-	      strerror(errno));
-      fflush(o);
-      exit(1);
-    }
+  if (_session_user_information_set(passwdEntry) == FALSE)
+    exit(1);
 
-  if (setgid(passwdEntry->pw_gid) != 0)
-    {
-      fprintf(o, "Jolicloud-DisplayManager: setgid failed [%s]\n",
-	      strerror(errno));
-      fflush(o);
-      exit(1);
-    }
-
-  if (setuid(passwdEntry->pw_uid) != 0)
-    {
-      fprintf(o, "Jolicloud-DisplayManager: setuid failed [%s]\n",
-	      strerror(errno));
-      fflush(o);
-      exit(1);
-    }
-
-  /* FIXME: Ensure the following check is usefull
+  /* FIXME: Ensure the check of the shell is usefull
    */
   if (passwdEntry->pw_shell[0] == '\0')
     {
       setusershell();
-      fprintf(o, "Jolicloud-DisplayManager: setting user shell to '%s'\n", getusershell());
-      fflush(o);
+      fprintf(stderr, "Jolicloud-DisplayManager: setting user shell to '%s'\n", getusershell());
       strcpy(passwdEntry->pw_shell, getusershell());
       endusershell();
     }
@@ -156,15 +133,13 @@ gboolean session_run(const struct passwd* passwdEntry)
   tmp = g_strdup_printf("%s/.Xauthority", passwdEntry->pw_dir);
   if (tmp == NULL)
     {
-      fprintf(o, "Jolicloud-DisplayManager: Internal Error: Not enough memory\n");
-      fflush(o);
+      fprintf(stderr, "Jolicloud-DisplayManager: Internal Error: Not enough memory\n");
       exit(1);
     }
 
   if (_session_cookie_add(":0", (char *)tmp) == FALSE)
     {
-      fprintf(o, "Jolicloud-DisplayManager: Unable to set user xauth cookie file\n");
-      fflush(o);
+      fprintf(stderr, "Jolicloud-DisplayManager: Unable to set user xauth cookie file\n");
       g_free(tmp);
       exit(1);
     }
@@ -174,15 +149,13 @@ gboolean session_run(const struct passwd* passwdEntry)
   tmp = g_strdup_printf("%s -a -l :0.0 %s", config_sessreg_path_get(), passwdEntry->pw_name);
   if (tmp == NULL)
     {
-      fprintf(o, "Jolicloud-DisplayManager: Internal Error: Not enough memory\n");
-      fflush(o);
+      fprintf(stderr, "Jolicloud-DisplayManager: Internal Error: Not enough memory\n");
       exit(1);
     }
 
   if (system(tmp) == -1)
     {
-      fprintf(o, "Jolicloud-DisplayManager: Unable to register session\n");
-      fflush(o);
+      fprintf(stderr, "Jolicloud-DisplayManager: Unable to register session\n");
       g_free(tmp);
       exit(1);
     }
@@ -191,9 +164,8 @@ gboolean session_run(const struct passwd* passwdEntry)
 
   if (chdir(passwdEntry->pw_dir) != 0)
     {
-      fprintf(o, "Jolicloud-DisplayManager: Unable to move to user home dir [%s]\n",
+      fprintf(stderr, "Jolicloud-DisplayManager: Unable to move to user home dir [%s]\n",
 	      strerror(errno));
-      fflush(o);
       exit(1);
     }
 
@@ -202,8 +174,7 @@ gboolean session_run(const struct passwd* passwdEntry)
   userEnv = g_malloc(sizeof(gchar *) * 15);
   if (userEnv == NULL)
     {
-      fprintf(o, "Jolicloud-DisplayManager: Internal Error: Not enough memory\n");
-      fflush(o);
+      fprintf(stderr, "Jolicloud-DisplayManager: Internal Error: Not enough memory\n");
       exit(1);
     }
 
@@ -220,27 +191,13 @@ gboolean session_run(const struct passwd* passwdEntry)
   userEnv[i++] = g_strdup_printf("XAUTHORITY=%s/.Xauthority", passwdEntry->pw_dir);
   userEnv[i] = 0;
 
-  {
-    int j;
-    for (j = 0; j < i && userEnv[j]; ++j)
-      {
-	fprintf(o, "env [%s]\n", userEnv[j]);
-	fflush(o);
-      }
-  }
-
-  if (!strncmp(passwdEntry->pw_name, "guest", sizeof("guest") - 1)
-      && config_guest_logincmd_get() != NULL)
-    loginCmd = config_guest_logincmd_get();
-  else
-    loginCmd = config_user_logincmd_get();
+  /* retrieve the correct login cmd (normal user or guest)
+   */
+  loginCmd = _session_logincmd_get(passwdEntry);
 
   tmp = g_strdup_printf("%s > %s/.jolicloud-displaymanager.log 2>&1",
 			loginCmd,
 			passwdEntry->pw_dir);
-
-  fprintf(o, "starting session [%s]\n", tmp);
-  fflush(o);
 
   execle(passwdEntry->pw_shell,
 	 passwdEntry->pw_shell,
@@ -313,4 +270,73 @@ static gboolean _session_started(void* context)
   g_sessionStartedCallback();
 
   return FALSE;
+}
+
+
+static gboolean _session_user_information_set(const struct passwd* passwdEntry)
+{
+  if (initgroups(passwdEntry->pw_name, passwdEntry->pw_gid) != 0)
+    {
+      fprintf(stderr, "Jolicloud-DisplayManager: initgroups failed [%s]\n",
+	      strerror(errno));
+      return FALSE;
+    }
+
+  if (setgid(passwdEntry->pw_gid) != 0)
+    {
+      fprintf(stderr, "Jolicloud-DisplayManager: setgid failed [%s]\n",
+	      strerror(errno));
+      return FALSE;
+    }
+
+  if (setuid(passwdEntry->pw_uid) != 0)
+    {
+      fprintf(stderr, "Jolicloud-DisplayManager: setuid failed [%s]\n",
+	      strerror(errno));
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+
+static const char* _session_logincmd_get(const struct passwd* passwdEntry)
+{
+  const char* guestGroup = NULL;
+  struct group* grEntry = NULL;
+
+  if (config_guestmode_enabled() == FALSE)
+    goto fallback;
+
+  guestGroup = config_guestmode_group_get();
+  if (guestGroup == NULL)
+    {
+      fprintf(stderr, "Jolicloud-DisplayManager: Guest Mode is enabled from configuration but no group has been specified\n");
+      goto fallback;
+    }
+
+  grEntry = getgrgid(passwdEntry->pw_gid);
+  endgrent();
+
+  if (grEntry == NULL)
+    {
+      fprintf(stderr, "Jolicloud-DisplayManager: Unable to retrieve group entry for user '%s' with gid '%d'\n",
+	      passwdEntry->pw_name, passwdEntry->pw_gid);
+      goto fallback;
+    }
+
+  if (!strcmp(grEntry->gr_name, guestGroup))
+    {
+      const char* logincmd = config_guestmode_logincmd_get();
+      if (logincmd == NULL)
+	{
+	  fprintf(stderr, "Jolicloud-DisplayManager: Guest Mode is enabled from configuration but no login cmd has been specified\n");
+	  goto fallback;
+	}
+
+      return logincmd;
+    }
+
+ fallback:
+  return config_user_logincmd_get();
 }

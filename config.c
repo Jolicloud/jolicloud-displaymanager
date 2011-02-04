@@ -2,10 +2,7 @@
 #include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
-
-
-/* FIXME: avoid loading of ~ and dot files
- */
+#include <string.h>
 
 
 #define CONFIG_FREE_STRING_VAR(__var)		\
@@ -54,21 +51,67 @@
     }									\
   while (0)
 
+#define CONFIG_GET_BOOLEAN_VALUE(__group, __key, __var)			\
+  do									\
+    {									\
+      char* localTmp = NULL;						\
+      GError* localError = NULL;					\
+      localTmp = g_key_file_get_string(keyFile, (__group), (__key), &localError); \
+      if (localTmp != NULL)						\
+	{								\
+	  if (!strcasecmp(localTmp, "true"))				\
+	    (__var) = TRUE;						\
+	  else								\
+	    (__var) = FALSE;						\
+	  g_free((gchar *)localTmp);					\
+	}								\
+      else								\
+	{								\
+	  g_error_free(localError);					\
+	}								\
+    }									\
+  while (0)
 
 
-static char* g_configLockFilePath = NULL;
-static char* g_configLogFilePath = NULL;
-static char* g_configXAuthPath = NULL;
-static char* g_configXAuthFilePath = NULL;
-static char* g_configSessregPath = NULL;
-static char* g_configThemeUrl = NULL;
-static char* g_configUserPath = NULL;
-static char* g_configUserLoginCmd = NULL;
-static char* g_configGuestLoginCmd = NULL;
-static char* g_configAutologin = NULL;
+
+/* group: internals
+ */
+static char* g_configLockFilePath = NULL; /* lockfile */
+static char* g_configLogFilePath = NULL; /* logfile */
+
+/* group: xserver
+ */
+static char* g_configXAuthPath = NULL; /* xauth */
+static char* g_configXAuthFilePath = NULL; /* xauthfile */
+static char* g_configSessregPath = NULL; /* sessreg */
+static char* g_configXServerPath = NULL; /* xserver */
+static char* g_configXServerArgs = NULL; /* xserverargs */
+
+/* group: theme
+ */
+static char* g_configThemeUrl = NULL; /* url */
+
+/* group: user
+ */
+static char* g_configUserPath = NULL; /* path */
+static char* g_configUserLoginCmd = NULL; /* logincmd */
+
+/* group: guestmode
+ */
+static gboolean g_configGuestmodeEnabled = FALSE; /* enabled */
+static char* g_configGuestmodeLogin = NULL; /* login */
+static char* g_configGuestmodeGroup = NULL; /* group */
+static char* g_configGuestmodeLoginCmd = NULL; /* logincmd */
+
+/* group: autologin
+ */
+static gboolean g_configAutologinEnabled = FALSE; /* enabled */
+static char* g_configAutologinLogin = NULL; /* login */
+
 
 static gboolean _config_parse_file(const char* filePath);
 
+static gboolean _config_is_filename_valid(const char* filename);
 
 gboolean config_init(void)
 {
@@ -80,14 +123,23 @@ void config_cleanup(void)
 {
   CONFIG_FREE_STRING_VAR(g_configLockFilePath);
   CONFIG_FREE_STRING_VAR(g_configLogFilePath);
+
   CONFIG_FREE_STRING_VAR(g_configXAuthPath);
   CONFIG_FREE_STRING_VAR(g_configXAuthFilePath);
   CONFIG_FREE_STRING_VAR(g_configSessregPath);
+  CONFIG_FREE_STRING_VAR(g_configXServerPath);
+  CONFIG_FREE_STRING_VAR(g_configXServerArgs);
+
   CONFIG_FREE_STRING_VAR(g_configThemeUrl);
+
   CONFIG_FREE_STRING_VAR(g_configUserPath);
   CONFIG_FREE_STRING_VAR(g_configUserLoginCmd);
-  CONFIG_FREE_STRING_VAR(g_configGuestLoginCmd);
-  CONFIG_FREE_STRING_VAR(g_configAutologin);
+
+  CONFIG_FREE_STRING_VAR(g_configGuestmodeLogin);
+  CONFIG_FREE_STRING_VAR(g_configGuestmodeGroup);
+  CONFIG_FREE_STRING_VAR(g_configGuestmodeLoginCmd);
+
+  CONFIG_FREE_STRING_VAR(g_configAutologinLogin);
 }
 
 
@@ -110,6 +162,9 @@ gboolean config_load(const char* configPath)
   while ((configFile = g_dir_read_name(dir)) != NULL)
     {
       gchar* filePath = NULL;
+
+      if (_config_is_filename_valid(configFile) == FALSE)
+	continue;
 
       filePath = g_build_filename(configPath, configFile, NULL);
       if (filePath == NULL)
@@ -134,15 +189,19 @@ gboolean config_load(const char* configPath)
   CONFIG_CHECK_STRING_VAR(g_configXAuthPath, "xauth", TRUE);
   CONFIG_CHECK_STRING_VAR(g_configXAuthFilePath, "xauthfile", TRUE);
   CONFIG_CHECK_STRING_VAR(g_configSessregPath, "sessreg", TRUE);
+  CONFIG_CHECK_STRING_VAR(g_configXServerPath, "xserver", TRUE);
+  CONFIG_CHECK_STRING_VAR(g_configXServerArgs, "xserverargs", TRUE);
 
   CONFIG_CHECK_STRING_VAR(g_configThemeUrl, "theme", TRUE);
 
   CONFIG_CHECK_STRING_VAR(g_configUserPath, "path", TRUE);
   CONFIG_CHECK_STRING_VAR(g_configUserLoginCmd, "logincmd", TRUE);
 
-  CONFIG_CHECK_STRING_VAR(g_configGuestLoginCmd, "[guest] logincmd", FALSE);
+  CONFIG_CHECK_STRING_VAR(g_configGuestmodeLogin, "[guestmode] login", FALSE);
+  CONFIG_CHECK_STRING_VAR(g_configGuestmodeGroup, "[guestmode] group", FALSE);
+  CONFIG_CHECK_STRING_VAR(g_configGuestmodeLoginCmd, "[guestmode] logincmd", FALSE);
 
-  CONFIG_CHECK_STRING_VAR(g_configAutologin, "[autologin] login", FALSE);
+  CONFIG_CHECK_STRING_VAR(g_configAutologinLogin, "[autologin] login", FALSE);
 
   g_dir_close(dir);
 
@@ -158,14 +217,23 @@ gboolean config_load(const char* configPath)
 
   CONFIG_FREE_STRING_VAR(g_configLockFilePath);
   CONFIG_FREE_STRING_VAR(g_configLogFilePath);
+
   CONFIG_FREE_STRING_VAR(g_configXAuthPath);
   CONFIG_FREE_STRING_VAR(g_configXAuthFilePath);
   CONFIG_FREE_STRING_VAR(g_configSessregPath);
+  CONFIG_FREE_STRING_VAR(g_configXServerPath);
+  CONFIG_FREE_STRING_VAR(g_configXServerArgs);
+
   CONFIG_FREE_STRING_VAR(g_configThemeUrl);
+
   CONFIG_FREE_STRING_VAR(g_configUserPath);
   CONFIG_FREE_STRING_VAR(g_configUserLoginCmd);
-  CONFIG_FREE_STRING_VAR(g_configGuestLoginCmd);
-  CONFIG_FREE_STRING_VAR(g_configAutologin);
+
+  CONFIG_FREE_STRING_VAR(g_configGuestmodeLogin);
+  CONFIG_FREE_STRING_VAR(g_configGuestmodeGroup);
+  CONFIG_FREE_STRING_VAR(g_configGuestmodeLoginCmd);
+
+  CONFIG_FREE_STRING_VAR(g_configAutologinLogin);
 
   return FALSE;
 }
@@ -201,6 +269,18 @@ const char* config_sessreg_path_get(void)
 }
 
 
+const char* config_xserver_path_get(void)
+{
+  return g_configXServerPath;
+}
+
+
+const char* config_xserverargs_get(void)
+{
+  return g_configXServerArgs;
+}
+
+
 const char* config_theme_url_get(void)
 {
   return g_configThemeUrl;
@@ -219,15 +299,39 @@ const char* config_user_logincmd_get(void)
 }
 
 
-const char* config_guest_logincmd_get(void)
+gboolean config_guestmode_enabled(void)
 {
-  return g_configGuestLoginCmd;
+  return g_configGuestmodeEnabled;
 }
 
 
-const char* config_autologin_get(void)
+const char* config_guestmode_login_get(void)
 {
-  return g_configAutologin;
+  return g_configGuestmodeLogin;
+}
+
+
+const char* config_guestmode_group_get(void)
+{
+  return g_configGuestmodeGroup;
+}
+
+
+const char* config_guestmode_logincmd_get(void)
+{
+  return g_configGuestmodeLoginCmd;
+}
+
+
+gboolean config_autologin_enabled(void)
+{
+  return g_configAutologinEnabled;
+}
+
+
+const char* config_autologin_login_get(void)
+{
+  return g_configAutologinLogin;
 }
 
 
@@ -265,15 +369,21 @@ static gboolean _config_parse_file(const char* filePath)
   CONFIG_GET_STRING_VALUE("xserver", "xauth", g_configXAuthPath);
   CONFIG_GET_STRING_VALUE("xserver", "xauthfile", g_configXAuthFilePath);
   CONFIG_GET_STRING_VALUE("xserver", "sessreg", g_configSessregPath);
+  CONFIG_GET_STRING_VALUE("xserver", "xserver", g_configXServerPath);
+  CONFIG_GET_STRING_VALUE("xserver", "xserverargs", g_configXServerArgs);
 
   CONFIG_GET_STRING_VALUE("theme", "url", g_configThemeUrl);
 
   CONFIG_GET_STRING_VALUE("user", "path", g_configUserPath);
   CONFIG_GET_STRING_VALUE("user", "logincmd", g_configUserLoginCmd);
 
-  CONFIG_GET_STRING_VALUE("guest", "logincmd", g_configGuestLoginCmd);
+  CONFIG_GET_BOOLEAN_VALUE("guestmode", "enabled", g_configGuestmodeEnabled);
+  CONFIG_GET_STRING_VALUE("guestmode", "login", g_configGuestmodeLogin);
+  CONFIG_GET_STRING_VALUE("guestmode", "group", g_configGuestmodeGroup);
+  CONFIG_GET_STRING_VALUE("guestmode", "logincmd", g_configGuestmodeLoginCmd);
 
-  CONFIG_GET_STRING_VALUE("autologin", "login", g_configAutologin);
+  CONFIG_GET_BOOLEAN_VALUE("autologin", "enabled", g_configAutologinEnabled);
+  CONFIG_GET_STRING_VALUE("autologin", "login", g_configAutologinLogin);
 
   g_key_file_free(keyFile);
 
@@ -288,4 +398,19 @@ static gboolean _config_parse_file(const char* filePath)
     g_key_file_free(keyFile);
 
   return FALSE;
+}
+
+
+static gboolean _config_is_filename_valid(const char* filename)
+{
+  size_t len;
+
+  if (!filename || !(*filename) || *filename == '.')
+    return FALSE;
+
+  len = strlen(filename);
+  if (len > 0 && filename[len - 1] == '~')
+    return FALSE;
+
+  return TRUE;
 }

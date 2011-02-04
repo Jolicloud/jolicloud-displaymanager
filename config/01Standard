@@ -6,7 +6,7 @@ logfile=/var/log/jolicloud-displaymanager.log
 xauth=/usr/bin/xauth
 xauthfile=/var/run/jolicloud-displaymanager.auth
 xserver=/usr/bin/X11/X
-xserverargs=-nolisten tcp vt07
+xserverargs=-verbose -nolisten tcp vt01
 sessreg=/usr/bin/sessreg
 
 [theme]
@@ -15,3 +15,13 @@ url=file:///usr/share/jolicloud-displaymanager/themes/default/index.html
 [user]
 path=/usr/local/sbin:/usr/local/bin:/usr/bin/X11:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
 logincmd=exec /bin/bash -login /etc/X11/Xsession default
+
+[guestmode]
+enabled=true
+login=guest
+group=guests
+logincmd=
+
+[autologin]
+enabled=true
+login=rno

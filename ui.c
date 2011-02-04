@@ -85,10 +85,7 @@ gboolean ui_init(sign_in_callback signinCallback)
 		   G_CALLBACK(_ui_main_window_delete_event), NULL);
 
   /* FIXME:
-     - disable context menu
-     - set a default cursor
-     - display fullscreen
-     - remove scrollbars of webview
+     - disable context menu (it has been already disabled from within the theme)
   */
 
   g_uiWebView = webkit_web_view_new();
@@ -106,6 +103,11 @@ gboolean ui_init(sign_in_callback signinCallback)
 	  config_theme_url_get());
 
   gtk_widget_show_all(g_uiMainWindow);
+
+  /* move the cursor to avoid having the crossair cursor from X
+     @jeremyB has begged me on his knees to have the cursor at 10,10 (top, left) :-)
+   */
+  gdk_display_warp_pointer(display, screen, 10, 10);
 
   return TRUE;
 }
@@ -363,6 +365,50 @@ js_jolicloud_sign_in(JSContextRef jsContext,
 
 
 static JSValueRef
+js_jolicloud_sign_in_as_guest(JSContextRef jsContext,
+			      JSObjectRef function,
+			      JSObjectRef thisObject,
+			      size_t argumentCount,
+			      const JSValueRef arguments[],
+			      JSValueRef* exception)
+{
+  JSObjectRef callback = NULL;
+  const char* guestLogin = NULL;
+
+  if (argumentCount != 1)
+    goto end;
+
+  callback = js_value_to_function(jsContext, arguments[0]);
+  guestLogin = config_guestmode_login_get();
+
+  if (callback == NULL || guestLogin == NULL)
+    goto end;
+
+  g_uiUsername = g_strdup(guestLogin);
+  g_uiPassword = g_strdup("");
+
+  if (g_uiUsername == NULL || g_uiPassword == NULL)
+    {
+      if (g_uiUsername != NULL)
+	g_free(g_uiUsername);
+      if (g_uiPassword != NULL)
+	g_free(g_uiPassword);
+      goto end;
+    }
+
+  g_uiJSCallbackValue = arguments[0];
+  g_uiJSCallback = callback;
+
+  JSValueProtect(jsContext, arguments[0]);
+
+  g_timeout_add_seconds(0, _ui_async_call_sign_in, NULL);
+
+ end:
+  return JSValueMakeNull(jsContext);
+}
+
+
+static JSValueRef
 js_jolicloud_add_event_listener(JSContextRef jsContext,
 				JSObjectRef function,
 				JSObjectRef thisObject,
@@ -405,9 +451,20 @@ static JSValueRef js_jolicloud_guestmode_get(JSContextRef jsContext,
 					     JSStringRef propertyName,
 					     JSValueRef* exception)
 {
-  if (config_guest_logincmd_get() == NULL)
-    return JSValueMakeBoolean(jsContext, false);
-  return JSValueMakeBoolean(jsContext, true);
+  gboolean guestmodeEnabled;
+
+  if (config_guestmode_enabled()
+      && config_guestmode_logincmd_get() != NULL
+      && config_guestmode_group_get() != NULL)
+    {
+      guestmodeEnabled = TRUE;
+    }
+  else
+    {
+      guestmodeEnabled = FALSE;
+    }
+
+  return JSValueMakeBoolean(jsContext, (bool)guestmodeEnabled);
 }
 
 
@@ -420,6 +477,7 @@ static const JSStaticValue jolicloudValues[] =
 static const JSStaticFunction jolicloudFunctions[] =
   {
     { "signIn", js_jolicloud_sign_in, kJSPropertyAttributeReadOnly },
+    { "signInAsGuest", js_jolicloud_sign_in_as_guest, kJSPropertyAttributeReadOnly },
     { "addEventListener", js_jolicloud_add_event_listener, kJSPropertyAttributeReadOnly },
     { NULL, NULL, 0 }
   };
