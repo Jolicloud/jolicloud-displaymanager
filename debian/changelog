@@ -1,7 +1,5 @@
 jolicloud-displaymanager (1.0~1.gbp97a0d6) UNRELEASED; urgency=low
 
-  ** SNAPSHOT build @97a0d627e3dacaed8f288c68c5a26f3c78df912b **
-
-  * Initial release. (Closes: #XXXXXX)
+  * Initial release.
 
  -- Arnaud Vallat <arnaud@jolicloud.org>  Thu, 03 Feb 2011 11:40:37 +0100
