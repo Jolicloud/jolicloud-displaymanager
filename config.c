@@ -425,7 +425,7 @@ static gboolean _config_is_filename_valid(const char* filename)
 
   if (endswith(filename, "~") == TRUE
       || endswith(filename, ".oem") == TRUE)
-    return TRUE;
+    return FALSE;
 
-  return FALSE;
+  return TRUE;
 }
