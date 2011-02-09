@@ -5,4 +5,6 @@ set -e
 cp /etc/X11/default-display-manager /etc/X11/default-display-manager.backup || true
 echo /usr/bin/jolicloud-displaymanager > /etc/X11/default-display-manager
 
+##DEBHELPER##
+
 exit 0

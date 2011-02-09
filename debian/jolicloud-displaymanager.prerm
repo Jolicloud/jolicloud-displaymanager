@@ -4,4 +4,6 @@ set -e
 
 mv /etc/X11/default-display-manager.backup /etc/X11/default-display-manager || true
 
+##DEBHELPER##
+
 exit 0

@@ -401,6 +401,21 @@ static gboolean _config_parse_file(const char* filePath)
 }
 
 
+static gboolean endswith(const char* string, const char* token)
+{
+  const size_t stringLen = strlen(string);
+  const size_t tokenLen = strlen(token);
+
+  if (stringLen == 0 || token == 0 || stringLen < tokenLen)
+    return FALSE;
+
+  if (!strcmp(string + (stringLen - tokenLen), token))
+    return TRUE;
+
+  return FALSE;
+}
+
+
 static gboolean _config_is_filename_valid(const char* filename)
 {
   size_t len;
@@ -408,9 +423,9 @@ static gboolean _config_is_filename_valid(const char* filename)
   if (!filename || !(*filename) || *filename == '.')
     return FALSE;
 
-  len = strlen(filename);
-  if (len > 0 && filename[len - 1] == '~')
-    return FALSE;
+  if (endswith(filename, "~") == TRUE
+      || endswith(filename, ".oem") == TRUE)
+    return TRUE;
 
-  return TRUE;
+  return FALSE;
 }

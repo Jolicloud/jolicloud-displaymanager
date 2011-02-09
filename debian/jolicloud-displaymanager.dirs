@@ -1,0 +1,6 @@
+etc
+etc/init.d
+etc/logrotate.d
+etc/jolicloud-displaymanager
+etc/X11/Xsession.d
+usr/share/jolicloud-displaymanager/themes/default

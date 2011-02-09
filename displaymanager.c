@@ -68,8 +68,8 @@ gboolean dm_init(int ac, char** av)
 
   /* initialize pam
    */
-  if (pam_init("Jolicloud-DM", _dm_pam_callback) == FALSE
-      || pam_item_set(PAM_ITEM_TTY, ":0.0") == FALSE
+  if (pam_init(PACKAGE, _dm_pam_callback) == FALSE
+      || pam_item_set(PAM_ITEM_TTY, display) == FALSE
       || pam_item_set(PAM_ITEM_REQUESTOR, "root") == FALSE
       || pam_item_set(PAM_ITEM_HOST, "localhost") == FALSE)
     goto onPamInitError;
