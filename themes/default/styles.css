@@ -94,6 +94,7 @@ header {
 
 header img {
     margin-top: 25px;
+    margin-left: 10px;
 }
 
 /* @group Titles */
@@ -315,6 +316,7 @@ input[type="submit"]:disabled,
 #guest-panel p:first-child {
     text-shadow: 0 1px rgba(255, 255, 255, 0.3);
     color: #000;
+    margin: 0;
 }
 
 #error {
