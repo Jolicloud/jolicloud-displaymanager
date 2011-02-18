@@ -19,8 +19,6 @@
 #include "xserver.h"
 #include "ui.h"
 
-#include <gdk/gdkkeysyms-compat.h>
-#include <X11/Xlib.h>
 
 static char* g_dmConfigurationPath = NULL;
 static gboolean g_dmFirstRun = TRUE;
@@ -169,11 +167,6 @@ void dm_run(void)
       g_dmReload = FALSE;
 
       gdk_display_close(gdk_display_get_default());
-
-      /* /\* set X handler to our dummy ones to avoid gdk to exit because X.Org terminated */
-      /*  *\/ */
-      /* XSetErrorHandler(_dm_dummy_x_error_handler); */
-      /* XSetIOErrorHandler(_dm_dummy_x_io_error_handler); */
 
       xserver_cleanup();
 
@@ -483,19 +476,6 @@ static void _dm_session_started(void)
 {
   ui_cleanup();
 }
-
-
-static int _dm_dummy_x_error_handler(Display* display, XErrorEvent *error)
-{
-  return 0;
-}
-
-
-static int _dm_dummy_x_io_error_handler(Display* display)
-{
-  return 0;
-}
-
 
 
 static void _dm_session_closed(void)
