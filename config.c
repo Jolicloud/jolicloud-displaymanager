@@ -109,6 +109,8 @@ static gboolean g_configAutologinEnabled = FALSE; /* enabled */
 static char* g_configAutologinLogin = NULL; /* login */
 
 
+
+
 static gboolean _config_parse_file(const char* filePath);
 
 static gboolean _config_is_filename_valid(const char* filename);
@@ -418,8 +420,6 @@ static gboolean endswith(const char* string, const char* token)
 
 static gboolean _config_is_filename_valid(const char* filename)
 {
-  size_t len;
-
   if (!filename || !(*filename) || *filename == '.')
     return FALSE;
 

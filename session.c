@@ -69,9 +69,7 @@ gboolean session_init(session_callback sessionStartedCallback,
       g_sessionCookie[i + 3] = hex[high >> 4];
     }
 
-  remove(config_xauthfile_path_get());
-
-  printf("Jolicloud-DisplayManager: cookie [%s]\n", g_sessionCookie);
+  fprintf(stderr, "Jolicloud-DisplayManager: cookie [%s]\n", g_sessionCookie);
 
   setenv("XAUTHORITY", config_xauthfile_path_get(), 1);
 
@@ -81,7 +79,21 @@ gboolean session_init(session_callback sessionStartedCallback,
 
 void session_cleanup(void)
 {
+  memset(g_sessionCookie, 0, 33);
 
+  g_sessionStartedCallback = NULL;
+  g_sessionClosedCallback = NULL;
+
+  if (g_sessionPid == 0)
+    return;
+
+  killpg(g_sessionPid, SIGHUP);
+
+  if (killpg(g_sessionPid, SIGTERM))
+    killpg(g_sessionPid, SIGKILL);
+
+  g_sessionPid = 0;
+  g_sessionPidWatcherId = 0;
 }
 
 
@@ -222,6 +234,8 @@ static gboolean _session_cookie_add(const char* display,
 
   printf("Jolicloud-DisplayManager: Adding XAuth cookie\n");
 
+  remove(cookiePath);
+
   arg = g_strdup_printf("%s -f %s -q", config_xauth_path_get(), cookiePath);
   if (arg == NULL)
     {
@@ -243,7 +257,7 @@ static gboolean _session_cookie_add(const char* display,
   fprintf(pipeHandle, "exit\n");
   pclose(pipeHandle);
 
-  printf("Jolicloud-DisplayManager: XAuth cookie added\n");
+  fprintf(stderr, "Jolicloud-DisplayManager: XAuth cookie added\n");
 
   return TRUE;
 }
@@ -251,10 +265,15 @@ static gboolean _session_cookie_add(const char* display,
 
 static void _session_watcher(GPid pid, gint status, void* context)
 {
+  fprintf(stderr, "Jolicloud-DisplayManager: Session closed with status %d\n", status);
+
+  killpg(g_sessionPid, SIGHUP);
+
+  if (killpg(g_sessionPid, SIGTERM))
+    killpg(g_sessionPid, SIGKILL);
+
   g_sessionPidWatcherId = 0;
   g_sessionPid = 0;
-
-  fprintf(stderr, "Jolicloud-DisplayManager: Session closed with status %d\n", status);
 
   g_sessionClosedCallback();
 }

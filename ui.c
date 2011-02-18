@@ -40,6 +40,7 @@ gboolean ui_init(sign_in_callback signinCallback)
   GdkKeymap* keymap;
   gint screenWidth;
   gint screenHeight;
+  GdkColor colorBlack = { 0, };
 
   if (signinCallback == NULL)
     {
@@ -60,6 +61,7 @@ gboolean ui_init(sign_in_callback signinCallback)
 		     G_CALLBACK(_ui_keymap_state_changed), NULL);
 
   g_uiMainWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_widget_modify_bg(g_uiMainWindow, GTK_STATE_NORMAL, &colorBlack);
   gtk_window_set_default_size(GTK_WINDOW(g_uiMainWindow), screenWidth, screenHeight);
   gtk_window_fullscreen(GTK_WINDOW(g_uiMainWindow));
 
@@ -89,6 +91,7 @@ gboolean ui_init(sign_in_callback signinCallback)
   */
 
   g_uiWebView = webkit_web_view_new();
+  gtk_widget_modify_bg(g_uiWebView, GTK_STATE_NORMAL, &colorBlack);
   g_signal_connect(G_OBJECT(g_uiWebView),
   		   "window-object-cleared",
   		   G_CALLBACK(_uibind_objects),
@@ -103,11 +106,6 @@ gboolean ui_init(sign_in_callback signinCallback)
 	  config_theme_url_get());
 
   gtk_widget_show_all(g_uiMainWindow);
-
-  /* move the cursor to avoid having the crossair cursor from X
-     @jeremyB has begged me on his knees to have the cursor at 10,10 (top, left) :-)
-   */
-  gdk_display_warp_pointer(display, screen, 10, 10);
 
   return TRUE;
 }
