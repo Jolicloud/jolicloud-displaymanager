@@ -15,7 +15,8 @@ SRC	=	main.c			\
 		pam.c			\
 		session.c		\
 		xserver.c		\
-		ui.c
+		ui.c			\
+		js-device-cpu.c
 
 OBJ	=	$(SRC:.c=.o)
 

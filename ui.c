@@ -3,6 +3,7 @@
 #include <JavaScriptCore/JavaScript.h>
 #include "ui.h"
 #include "config.h"
+#include "js-device-cpu.h"
 #include <string.h>
 
 
@@ -50,6 +51,8 @@ gboolean ui_init(sign_in_callback signinCallback)
 
   g_uiSignInCallback = signinCallback;
 
+  device_cpu_init();
+
   display = gdk_display_get_default();
   screen = gdk_display_get_default_screen(display);
   screenWidth = gdk_screen_get_width(screen);
@@ -62,8 +65,10 @@ gboolean ui_init(sign_in_callback signinCallback)
 
   g_uiMainWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_widget_modify_bg(g_uiMainWindow, GTK_STATE_NORMAL, &colorBlack);
-  gtk_window_set_default_size(GTK_WINDOW(g_uiMainWindow), screenWidth, screenHeight);
-  gtk_window_fullscreen(GTK_WINDOW(g_uiMainWindow));
+  /* gtk_window_set_default_size(GTK_WINDOW(g_uiMainWindow), screenWidth, screenHeight); */
+  /* gtk_window_fullscreen(GTK_WINDOW(g_uiMainWindow)); */
+
+  gtk_window_set_default_size(GTK_WINDOW(g_uiMainWindow), 320, 240);
 
   /* AlwaysOnTop
    */
@@ -115,6 +120,8 @@ void ui_cleanup(void)
 {
   if (g_uiMainWindow == NULL)
     return;
+
+  device_cpu_cleanup();
 
   if (g_uiJSCallbackValue != NULL)
     {
@@ -485,9 +492,48 @@ static const JSClassDefinition jolicloudDefinition =
     0,
     kJSClassAttributeNone,
     "JolicloudClass",
-    NULL,
+    NULL, /* parent class */
     jolicloudValues,
     jolicloudFunctions,
+  };
+
+
+
+static JSClassRef g_deviceClass;
+
+
+static JSValueRef js_device_cpu_model_name_get(JSContextRef jsContext,
+					       JSObjectRef thisObject,
+					       JSStringRef propertyName,
+					       JSValueRef* exception)
+{
+  JSValueRef ret;
+  JSStringRef stringRef;
+
+  stringRef = JSStringCreateWithUTF8CString(device_cpu_model_name_get());
+
+  ret = JSValueMakeString(jsContext, stringRef);
+
+  JSStringRelease(stringRef);
+
+  return ret;
+}
+
+
+static const JSStaticValue deviceValues[] =
+  {
+    { "cpu_model_name", js_device_cpu_model_name_get, NULL, kJSPropertyAttributeReadOnly },
+    { NULL, NULL, NULL, 0 }
+  };
+
+static const JSClassDefinition deviceDefinition =
+  {
+    0,
+    kJSClassAttributeNone,
+    "DeviceClass",
+    NULL,
+    deviceValues,
+    NULL,
   };
 
 
@@ -498,6 +544,7 @@ static void _uibind_objects(WebKitWebView* webkitWebView,
 			    void* data)
 {
   JSObjectRef jolicloudObject;
+  JSObjectRef deviceObject;
 
   g_uiJSGlobalContext = context;
 
@@ -507,4 +554,11 @@ static void _uibind_objects(WebKitWebView* webkitWebView,
 		      JSContextGetGlobalObject(context),
 		      JSStringCreateWithUTF8CString("jolicloud"),
 		      jolicloudObject, kJSPropertyAttributeNone, NULL);
+
+  g_deviceClass = JSClassCreate(&deviceDefinition);
+  deviceObject = JSObjectMake(context, g_deviceClass, NULL);
+  JSObjectSetProperty(context,
+		      JSContextGetGlobalObject(context),
+		      JSStringCreateWithUTF8CString("device"),
+		      deviceObject, kJSPropertyAttributeNone, NULL);
 }

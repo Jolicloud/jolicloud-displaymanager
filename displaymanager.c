@@ -216,8 +216,10 @@ void dm_cleanup(void)
   /* FIXME: Should we close any running session properly?
    */
 
-  xserver_cleanup();
   session_cleanup();
+
+  xserver_cleanup();
+
   pam_cleanup();
   log_cleanup();
   lock_cleanup();
