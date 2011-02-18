@@ -10,6 +10,7 @@
 #include <pwd.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include "displaymanager.h"
 #include "config.h"
 #include "locker.h"
