@@ -19,7 +19,8 @@ static JSObjectRef g_uiJSCallback = NULL;
 static JSValueRef g_uiJSCapslockCallbackValue = NULL;
 static JSObjectRef g_uiJSCapslockCallback = NULL;
 
-static sign_in_callback g_uiSignInCallback = NULL;
+static ui_callback g_uiReadyCallback = NULL;
+static ui_callback g_uiSignInCallback = NULL;
 
 
 static gboolean _ui_main_window_delete_event(GtkWidget* widget, GdkEvent* event,
@@ -34,7 +35,8 @@ static void _uibind_objects(WebKitWebView* webkitWebView,
 
 
 
-gboolean ui_init(sign_in_callback signinCallback)
+gboolean ui_init(ui_callback readyCallback,
+		 ui_callback signinCallback)
 {
   GdkDisplay* display;
   GdkScreen* screen;
@@ -43,12 +45,13 @@ gboolean ui_init(sign_in_callback signinCallback)
   gint screenHeight;
   GdkColor colorBlack = { 0, };
 
-  if (signinCallback == NULL)
+  if (readyCallback == NULL || signinCallback == NULL)
     {
       fprintf(stderr, "Jolicloud-DisplayManager: UI is being initialized without a callback\n");
       return FALSE;
     }
 
+  g_uiReadyCallback = readyCallback;
   g_uiSignInCallback = signinCallback;
 
   device_cpu_init();
@@ -65,10 +68,8 @@ gboolean ui_init(sign_in_callback signinCallback)
 
   g_uiMainWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_widget_modify_bg(g_uiMainWindow, GTK_STATE_NORMAL, &colorBlack);
-  /* gtk_window_set_default_size(GTK_WINDOW(g_uiMainWindow), screenWidth, screenHeight); */
-  /* gtk_window_fullscreen(GTK_WINDOW(g_uiMainWindow)); */
-
-  gtk_window_set_default_size(GTK_WINDOW(g_uiMainWindow), 320, 240);
+  gtk_window_set_default_size(GTK_WINDOW(g_uiMainWindow), screenWidth, screenHeight);
+  gtk_window_fullscreen(GTK_WINDOW(g_uiMainWindow));
 
   /* AlwaysOnTop
    */
@@ -561,4 +562,6 @@ static void _uibind_objects(WebKitWebView* webkitWebView,
 		      JSContextGetGlobalObject(context),
 		      JSStringCreateWithUTF8CString("device"),
 		      deviceObject, kJSPropertyAttributeNone, NULL);
+
+  g_uiReadyCallback();
 }

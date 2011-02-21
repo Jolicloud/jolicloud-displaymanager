@@ -12,11 +12,11 @@ typedef enum STATUS_CODE
   } STATUS_CODE;
 
 
-typedef void (*sign_in_callback)(void);
+typedef void (*ui_callback)(void);
 
 
-
-gboolean ui_init(sign_in_callback signinCallback);
+gboolean ui_init(ui_callback readyCallback,
+		 ui_callback signinCallback);
 
 void ui_cleanup(void);
 

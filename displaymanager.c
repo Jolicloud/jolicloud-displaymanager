@@ -386,12 +386,8 @@ static void _dm_root_window_prepare(void)
 }
 
 
-static void _dm_xserver_ready(void)
+static void _dm_ui_ready(void)
 {
-  int argc = 1;
-  char* av = PACKAGE;
-  char** argv = &av;
-
   /* The thing bellow should never disappear!
    */
   {
@@ -401,6 +397,14 @@ static void _dm_xserver_ready(void)
     else if (WIFSIGNALED(ret))
       fprintf(stderr, "Jolicloud-DisplayManager: plymouth killed, signal=%d\n", WTERMSIG(ret));
   }
+}
+
+
+static void _dm_xserver_ready(void)
+{
+  int argc = 1;
+  char* av = PACKAGE;
+  char** argv = &av;
 
   gtk_init(&argc, &argv);
 
@@ -416,7 +420,7 @@ static void _dm_xserver_ready(void)
       return;
     }
 
-  ui_init(_dm_sign_in);
+  ui_init(_dm_ui_ready, _dm_sign_in);
 }
 
 
