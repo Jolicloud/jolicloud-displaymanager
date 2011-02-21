@@ -40,8 +40,16 @@
                 var signInLocal = document.querySelector('#local');
                 var signInGuest = document.querySelector('#sign-in-guest');
                 // Shit to handle capslock
-                var capslockState = true;
+                var capslockState = false;
                 var passwordHasFocus = false;
+                
+                var jolicloud = {
+                    'guestmode': true,
+                    
+                    'addEventListener': function() {},
+                    
+                    'signIn': function() {}
+                };
 
                 if (typeof jolicloud != "undefined" && !jolicloud.guestmode) {
                     document.getElementsByTagName('ul')[0].className = 'no-guestmode';
@@ -175,6 +183,14 @@
                     inputs[i].addEventListener('keypress', function(event) {
                         document.querySelector("#error").style.opacity = '0';
                         document.querySelector("#error").style.display = 'none';
+                        // Catch Enter on username field
+                        if (this.id == 'username') {
+                            var key = event.keyCode || event.which;
+                            if (key == 13 && this.value != "") {
+                                event.preventDefault();
+                                password.select();
+                            }
+                        }
                     }, false);
                     
                     // If we press "Esc", clean the form
