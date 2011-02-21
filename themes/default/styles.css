@@ -68,25 +68,20 @@ header {
 }
 
 header img {
-    margin-top: 25px;
-    margin-left: 10px;
+    margin-top: 40px;
+    margin-left: 20px;
+    float: left;
 }
 
 /* @group Titles */
 
-h1, h2 {
-    margin: 0;
-    text-shadow: 0 1px #fff;
-}
 h1 {
+    margin-top: 40px;
+    margin-left: 10px;
+    text-shadow: 0 1px #fff;
     color: #09557F;
     font-size: 18px;
-}
-
-h2 {
-    color: #AAADB0;
-    font-size: 13px;
-    margin-top: -5px;
+    float: left;
 }
 
 /* @end */
@@ -264,6 +259,7 @@ input[type="submit"],
     display: inline-block;
     -webkit-border-radius: 3px;
     color: #fff;
+    text-shadow: 0 1px rgba(0, 0, 0, 0.75);
     min-width: 72px;
     height: 25px;
     font-size: 12px;
@@ -272,14 +268,14 @@ input[type="submit"],
     background: -webkit-gradient(linear,
                                  0 0,
                                  0 100%,
-                                 from(#404453),
-                                 to(#1E2027));
-    -webkit-box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+                                 from(#4FB106),
+                                 to(#157402));
+    -webkit-box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4),
+                        inset 0 0 1px rgba(255, 255, 255, 1);
     margin: 0;
     text-decoration: none;
     padding: 0 10px;
     line-height: 23px;
-    text-shadow: none;
 }
 
 input[type="submit"]:disabled,
@@ -291,6 +287,8 @@ input[type="submit"]:disabled,
     text-shadow: 0 1px rgba(255, 255, 255, 0.3);
     color: #000;
     margin: 0;
+    text-align: justify;
+    line-height: 1.1em;
 }
 
 #error {

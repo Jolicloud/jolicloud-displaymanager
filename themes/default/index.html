@@ -9,10 +9,7 @@
     <div id="container">
         <header>
             <img src="logo.png" />
-            <hgroup>
-                <h1>Joli OS</h1>
-                <h2>Version 1.2</h2>
-            </hgroup>
+            <h1>Access this device</h1>
         </header>
         <section>
             <ul>
@@ -42,6 +39,14 @@
                 // Shit to handle capslock
                 var capslockState = false;
                 var passwordHasFocus = false;
+                
+                var jolicloud = {
+                    'guestmode': true,
+                    
+                    'addEventListener': function() {},
+                    
+                    'signIn': function() {}
+                };
 
                 // Check for guest-mode option
                 if (!jolicloud.guestmode) {
