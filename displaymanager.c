@@ -377,12 +377,12 @@ static void _dm_root_window_prepare(void)
 {
   gdk_set_root_window_cursor(GDK_TOP_LEFT_ARROW);
 
-  /* move the cursor to avoid having the crossair cursor from X
-     @jeremyB has begged me on his knees to have the cursor at 10,10 (top, left) :-)
-  */
-  gdk_display_warp_pointer(gdk_display_get_default(),
-			   gdk_display_get_default_screen(gdk_display_get_default()),
-			   10, 10);
+  /* /\* move the cursor to avoid having the crossair cursor from X */
+  /*    @jeremyB has begged me on his knees to have the cursor at 10,10 (top, left) :-) */
+  /* *\/ */
+  /* gdk_display_warp_pointer(gdk_display_get_default(), */
+  /* 			   gdk_display_get_default_screen(gdk_display_get_default()), */
+  /* 			   10, 10); */
 }
 
 
