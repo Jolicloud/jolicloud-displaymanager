@@ -48,11 +48,6 @@
                     document.getElementsByTagName('ul')[0].className = 'no-guestmode';
                 }
 
-                // Disable effects for Atom processors
-                if (device.cpu_model_name.indexOf("Atom") != -1) {
-                    document.getElementsByTagName('body')[0].className = 'atom';
-                }
-
                 // Disable Right-click
                 document.addEventListener('contextmenu', function(event) {
                     event.preventDefault();
@@ -69,13 +64,9 @@
                     }
                 }, false);
 
-                var shakeWindow = function shakeWindow() {
-                    document.querySelector("#container").className = 'shake';
+                var displayError = function displayError() {
                     document.querySelector("#error").style.display = 'block';
                     document.querySelector("#error").style.opacity = '1';
-                    setTimeout(function() {
-                        document.querySelector("#container").className = '';
-                    }, 400);
                 };
 
                 var disableForm = function disableForm() {
@@ -135,9 +126,9 @@
                         inputs[i].blur();
                     }
 
-                    // If there is an error, shake the window and display an error message
+                    // If there is an error, an error message
                     if (username.value == '') {
-                        shakeWindow();
+                        displayError();
                         password.value = '';
                     }
 
@@ -147,7 +138,7 @@
                             if (status == 0) {
                                 // WIN
                             } else {
-                                shakeWindow();
+                                displayError();
                                 enableForm();
                                 username.value = '';
                                 password.value = '';
@@ -168,7 +159,7 @@
                         if (status == 0) {
                             // WIN
                         } else {
-                            shakeWindow();
+                            displayError();
                             enableForm();
                             // TODO Display an error…
                         }
