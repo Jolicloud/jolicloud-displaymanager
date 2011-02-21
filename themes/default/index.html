@@ -42,24 +42,22 @@
                 // Shit to handle capslock
                 var capslockState = false;
                 var passwordHasFocus = false;
-                
-                var jolicloud = {
-                    'guestmode': true,
-                    
-                    'addEventListener': function() {},
-                    
-                    'signIn': function() {}
-                };
 
-                if (typeof jolicloud != "undefined" && !jolicloud.guestmode) {
+                // Check for guest-mode option
+                if (!jolicloud.guestmode) {
                     document.getElementsByTagName('ul')[0].className = 'no-guestmode';
+                }
+
+                // Disable effects for Atom processors
+                if (device.cpu_model_name.indexOf("Atom") != -1) {
+                    document.getElementsByTagName('body')[0].className = 'atom';
                 }
 
                 // Disable Right-click
                 document.addEventListener('contextmenu', function(event) {
                     event.preventDefault();
                 }, false);
-                
+
                 // Handle capslock
                 jolicloud.addEventListener('capslock', function(state) {
                     capslockState = state;

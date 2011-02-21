@@ -68,7 +68,7 @@ body {
                                  to(rgba(255, 255, 255, 0.65)));
 }
 
-#container.shake {
+body:not(.atom) #container.shake {
     -webkit-animation-name: shake;
     -webkit-animation-duration: 0.4s;
     -webkit-animation-timing-function: ease-in-out;
@@ -126,11 +126,15 @@ section {
 #local-panel,
 #guest-panel {
     position: absolute;
-    -webkit-transition: opacity .2s linear;
     top: 40px;
     right: 90px;
     left: 90px;
     height: 100px;
+}
+
+body:not(.atom) #local-panel,
+body:not(.atom) #guest-panel {
+    -webkit-transition: opacity .2s linear;
 }
 
 #local-panel {
