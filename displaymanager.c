@@ -25,7 +25,9 @@ static char* g_dmConfigurationPath = NULL;
 static gboolean g_dmFirstRun = TRUE;
 static gboolean g_dmReload = FALSE;
 static GMainLoop* g_dmMainLoop = NULL;
+
 static int g_dmSignalPipe[2];
+static gboolean g_dmSignalPipeInitialized = FALSE;
 
 
 static gboolean _dm_signal_handler_prepare(void);
@@ -48,6 +50,35 @@ static gboolean _dm_session_run(void);
 static void _dm_sign_in(void);
 
 
+/* the two functions below are just ugly, we may prefer to emit upstart event
+   to avoid calling plymouth directly
+*/
+static void plymouth_show(void)
+{
+  int ret;
+
+  ret = system("/bin/plymouth show-splash");
+  if (WIFEXITED(ret))
+    fprintf(stderr, "Jolicloud-DisplayManager: plymouth exited, status=%d\n", WEXITSTATUS(ret));
+  else if (WIFSIGNALED(ret))
+    fprintf(stderr, "Jolicloud-DisplayManager: plymouth killed, signal=%d\n", WTERMSIG(ret));
+}
+
+
+static void plymouth_hide(void)
+{
+  int ret;
+
+  ret = system("/bin/plymouth quit --retain-splash");
+  if (WIFEXITED(ret))
+    fprintf(stderr, "Jolicloud-DisplayManager: plymouth exited, status=%d\n", WEXITSTATUS(ret));
+  else if (WIFSIGNALED(ret))
+    fprintf(stderr, "Jolicloud-DisplayManager: plymouth killed, signal=%d\n", WTERMSIG(ret));
+}
+
+
+/* Gdk is lacking such a great routine ^^
+ */
 static void gdk_set_root_window_cursor(GdkCursorType cursorType)
 {
   GdkDisplay* display;
@@ -65,6 +96,12 @@ static void gdk_set_root_window_cursor(GdkCursorType cursorType)
 gboolean dm_init(int ac, char** av)
 {
   char* display = NULL;
+
+  if (getuid() != 0)
+    {
+      fprintf(stderr, "Jolicloud-DisplayManager: Only root can run this program\n");
+      return FALSE;
+    }
 
   if (_dm_signal_handler_prepare() == FALSE)
     {
@@ -158,30 +195,52 @@ void dm_run(void)
 
   while (1)
     {
-      fprintf(stderr, "Jolicloud-DisplayManager: Entering main loop\n");
       g_main_loop_run(g_dmMainLoop);
-      fprintf(stderr, "Jolicloud-DisplayManager: Out of main loop [reload %d]\n", g_dmReload);
 
       if (g_dmReload == FALSE)
 	break;
 
+      /* we're over calling plymouth_show to ensure plymouth is always displayed.
+	 Tiny hack made by Adam found on Slim's code.
+      */
+
       g_dmReload = FALSE;
 
+      plymouth_show();
+
+      /* we're closing GdkDisplay to ensure it won't exit because we're stopping X.Org bellow
+       */
       gdk_display_close(gdk_display_get_default());
 
+      plymouth_show();
+
+      /* Terminating X.Org
+       */
       xserver_cleanup();
 
+      plymouth_show();
+
+      /* Cleaning up session cookie
+       */
       session_cleanup();
 
+      plymouth_show();
+
+      /* install our unix signal handlers
+       */
       if (_dm_signal_handler_prepare() == FALSE)
 	{
 	  fprintf(stderr, "Jolicloud-DisplayManager: Unable to prepare signals handlers\n");
 	  exit(1);
 	}
 
+      plymouth_show();
+
       g_type_init();
       g_dmMainLoop = g_main_loop_new(NULL, FALSE);
 
+      /* hooking our unix signals to a IOChannel
+       */
       if (_dm_signal_handler_set() == FALSE)
 	{
 	  fprintf(stderr, "Jolicloud-DisplayManager: Unable to link signal handler to the main loop\n");
@@ -194,12 +253,18 @@ void dm_run(void)
 	  exit(1);
 	}
 
+      /* generating session cookie
+       */
       if (session_init(_dm_session_started, _dm_session_closed) == FALSE)
 	{
 	  fprintf(stderr, "Jolicloud-DisplayManager: Failed to initialize session\n");
 	  exit(1);
 	}
 
+      plymouth_show();
+
+      /* starting up X.Org
+       */
       if (xserver_init(getenv("display"), _dm_xserver_terminated) == FALSE)
 	{
 	  fprintf(stderr, "Jolicloud-DisplayManager: Failed to start X.Org\n");
@@ -287,6 +352,17 @@ static gboolean _dm_signal_handler_prepare(void)
 {
   struct sigaction sigAction;
 
+  if (g_dmSignalPipeInitialized == TRUE)
+    {
+      g_dmSignalPipeInitialized = FALSE;
+
+      /* we're closing pipe to ensure the IOChannel is properly destroyed (avoid a leak then)
+       */
+
+      close(g_dmSignalPipe[0]);
+      close(g_dmSignalPipe[1]);
+    }
+
   if (pipe(g_dmSignalPipe) != 0)
     {
       fprintf(stderr, "Jolicloud-DisplayManager: Unable to create the signal pipe [%s]\n", strerror(errno));
@@ -295,6 +371,8 @@ static gboolean _dm_signal_handler_prepare(void)
 
   fcntl(g_dmSignalPipe[0], F_SETFD, FD_CLOEXEC);
   fcntl(g_dmSignalPipe[1], F_SETFD, FD_CLOEXEC);
+
+  g_dmSignalPipeInitialized = TRUE;
 
   sigAction.sa_sigaction = _dm_signal_handler;
   sigemptyset(&sigAction.sa_mask);
@@ -312,6 +390,12 @@ static gboolean _dm_signal_handler_prepare(void)
 static gboolean _dm_signal_handler_set(void)
 {
   GIOChannel* ioChannel;
+
+  if (g_dmSignalPipeInitialized == FALSE)
+    {
+      fprintf(stderr, "Jolicloud-DisplayManager: Unable to watch unix signal: Pipe is NOT initialized\n");
+      return FALSE;
+    }
 
   ioChannel = g_io_channel_unix_new(g_dmSignalPipe[0]);
   if (ioChannel == NULL)
@@ -375,7 +459,7 @@ static gboolean _dm_arguments_parse(int ac, char** av)
 
 static void _dm_root_window_prepare(void)
 {
-  gdk_set_root_window_cursor(GDK_TOP_LEFT_ARROW);
+  gdk_set_root_window_cursor(GDK_BLANK_CURSOR);
 
   /* /\* move the cursor to avoid having the crossair cursor from X */
   /*    @jeremyB has begged me on his knees to have the cursor at 10,10 (top, left) :-) */
@@ -388,15 +472,7 @@ static void _dm_root_window_prepare(void)
 
 static void _dm_ui_ready(void)
 {
-  /* The thing bellow should never disappear!
-   */
-  {
-    int ret = system("/bin/plymouth quit --retain-splash");
-    if (WIFEXITED(ret))
-      fprintf(stderr, "Jolicloud-DisplayManager: plymouth exited, status=%d\n", WEXITSTATUS(ret));
-    else if (WIFSIGNALED(ret))
-      fprintf(stderr, "Jolicloud-DisplayManager: plymouth killed, signal=%d\n", WTERMSIG(ret));
-  }
+  gdk_set_root_window_cursor(GDK_TOP_LEFT_ARROW);
 }
 
 
@@ -405,6 +481,8 @@ static void _dm_xserver_ready(void)
   int argc = 1;
   char* av = PACKAGE;
   char** argv = &av;
+
+  plymouth_hide();
 
   gtk_init(&argc, &argv);
 
@@ -427,6 +505,8 @@ static void _dm_xserver_ready(void)
 static void _dm_xserver_terminated(void)
 {
   /* printf("[CALLBACK] X.Org terminated\n"); */
+
+  plymouth_show();
 }
 
 
@@ -481,24 +561,33 @@ static gboolean _dm_autologin(void* context)
 
 static void _dm_session_started(void)
 {
+  /* user session is starting.
+     Hide the cursor and destroy the UI
+  */
+  gdk_set_root_window_cursor(GDK_BLANK_CURSOR);
+
   ui_cleanup();
 }
 
 
 static void _dm_session_closed(void)
 {
-  int ret;
+  /* user session is now closed
+   */
 
   g_dmReload = TRUE;
 
+  gdk_set_root_window_cursor(GDK_BLANK_CURSOR);
+
+  /* cleaning up user session from pam
+   */
   pam_session_close();
 
-  ret = system("/bin/plymouth show-splash");
-  if (WIFEXITED(ret))
-    fprintf(stderr, "Jolicloud-DisplayManager: plymouth exited, status=%d\n", WEXITSTATUS(ret));
-  else if (WIFSIGNALED(ret))
-    fprintf(stderr, "Jolicloud-DisplayManager: plymouth killed, signal=%d\n", WTERMSIG(ret));
+  plymouth_show();
 
+  /* ask to quit the main loop to avoid any glitch
+     (see dm_run() routine to understand)
+   */
   g_main_loop_quit(g_dmMainLoop);
   g_main_loop_unref(g_dmMainLoop);
 }
@@ -533,6 +622,8 @@ static gboolean _dm_session_run(void)
       return FALSE;
     }
 
+  /* INFO: never free a PAM item entry
+   */
   if (pam_item_get(PAM_ITEM_USER, (const void **)(&realUsername)) == FALSE
       || realUsername == NULL)
     {
@@ -544,8 +635,6 @@ static gboolean _dm_session_run(void)
 
   passwdEntry = getpwnam(realUsername);
 
-  /* FIXME: Should we release tne password entry now?
-   */
   endpwent();
 
   if (passwdEntry == NULL)
@@ -555,18 +644,12 @@ static gboolean _dm_session_run(void)
       goto onError;
     }
 
-  /* if (realUsername != NULL) */
-  /*   free(realUsername); */
-
   if (session_run(passwdEntry) == FALSE)
     fprintf(stderr, "Jolicloud-DisplayManager: Failed to initialize session\n");
 
   return TRUE;
 
  onError:
-
-  /* if (realUsername != NULL) */
-  /*   free(realUsername); */
 
   pam_session_close();
 

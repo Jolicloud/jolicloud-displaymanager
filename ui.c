@@ -9,6 +9,7 @@
 
 static GtkWidget* g_uiMainWindow = NULL;
 static GtkWidget* g_uiWebView = NULL;
+static GtkWidget* g_uiBlackOverlay = NULL;
 
 static char* g_uiUsername = NULL;
 static char* g_uiPassword = NULL;
@@ -33,6 +34,23 @@ static void _uibind_objects(WebKitWebView* webkitWebView,
 			    JSObjectRef windowObject,
 			    void* data);
 
+
+static void _ui_apply_main_window_settings(void)
+{
+  /* AlwaysOnTop
+   */
+  gtk_window_set_keep_above(GTK_WINDOW(g_uiMainWindow), TRUE);
+
+
+  /* skip taskbar & pager
+   */
+  gtk_window_set_skip_taskbar_hint(GTK_WINDOW(g_uiMainWindow), TRUE);
+  gtk_window_set_skip_pager_hint(GTK_WINDOW(g_uiMainWindow), TRUE);
+
+  /* remove decoration
+   */
+  gtk_window_set_decorated(GTK_WINDOW(g_uiMainWindow), FALSE);
+}
 
 
 gboolean ui_init(ui_callback readyCallback,
@@ -71,19 +89,10 @@ gboolean ui_init(ui_callback readyCallback,
   gtk_window_set_default_size(GTK_WINDOW(g_uiMainWindow), screenWidth, screenHeight);
   gtk_window_fullscreen(GTK_WINDOW(g_uiMainWindow));
 
-  /* AlwaysOnTop
-   */
-  gtk_window_set_keep_above(GTK_WINDOW(g_uiMainWindow), TRUE);
-
-
-  /* skip taskbar & pager
-   */
-  gtk_window_set_skip_taskbar_hint(GTK_WINDOW(g_uiMainWindow), TRUE);
-  gtk_window_set_skip_pager_hint(GTK_WINDOW(g_uiMainWindow), TRUE);
-
-  /* remove decoration
-   */
-  gtk_window_set_decorated(GTK_WINDOW(g_uiMainWindow), FALSE);
+  g_uiBlackOverlay = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_widget_modify_bg(g_uiBlackOverlay, GTK_STATE_NORMAL, &colorBlack);
+  gtk_window_set_default_size(GTK_WINDOW(g_uiBlackOverlay), screenWidth, screenHeight);
+  gtk_window_fullscreen(GTK_WINDOW(g_uiBlackOverlay));
 
   /* disable close button (should not be available since we don't have any decoration!)
    */
@@ -103,15 +112,15 @@ gboolean ui_init(ui_callback readyCallback,
   		   G_CALLBACK(_uibind_objects),
   		   NULL);
 
-  gtk_container_add(GTK_CONTAINER(g_uiMainWindow), g_uiWebView);
+  /* gtk_container_add(GTK_CONTAINER(g_uiMainWindow), g_uiWebView); */
 
   webkit_web_view_load_uri(WEBKIT_WEB_VIEW(g_uiWebView),
 			   config_theme_url_get());
 
-  fprintf(stderr, "Jolicloud-DisplayManager: theme url [%s]\n",
-	  config_theme_url_get());
-
   gtk_widget_show_all(g_uiMainWindow);
+  gtk_widget_show_all(g_uiBlackOverlay);
+
+  gdk_keyboard_grab(g_uiMainWindow->window, FALSE, GDK_CURRENT_TIME);
 
   return TRUE;
 }
@@ -121,6 +130,8 @@ void ui_cleanup(void)
 {
   if (g_uiMainWindow == NULL)
     return;
+
+  gdk_keyboard_ungrab(GDK_CURRENT_TIME);
 
   device_cpu_cleanup();
 
@@ -317,6 +328,13 @@ static gboolean _ui_async_call_sign_in(void* context)
       g_uiPassword = NULL;
     }
 
+  if (g_uiJSCallbackValue != NULL)
+    {
+      JSValueUnprotect(g_uiJSGlobalContext, g_uiJSCallbackValue);
+      g_uiJSCallbackValue = NULL;
+      g_uiJSCallback = NULL;
+    }
+
   return FALSE;
 }
 
@@ -343,15 +361,15 @@ js_jolicloud_sign_in(JSContextRef jsContext,
   if (username == NULL || password == NULL || callback == NULL)
     {
       if (username != NULL)
-	{
-	  memset(username, 0, strlen(username));
-	  g_free(username);
-	}
+  	{
+  	  memset(username, 0, strlen(username));
+  	  g_free(username);
+  	}
       if (password != NULL)
-	{
-	  memset(password, 0, strlen(password));
-	  g_free(password);
-	}
+  	{
+  	  memset(password, 0, strlen(password));
+  	  g_free(password);
+  	}
 
       goto end;
     }
@@ -363,7 +381,7 @@ js_jolicloud_sign_in(JSContextRef jsContext,
 
   JSValueProtect(jsContext, arguments[2]);
 
-  g_timeout_add_seconds(0, _ui_async_call_sign_in, NULL);
+  g_timeout_add_seconds(1, _ui_async_call_sign_in, NULL);
 
  end:
   return JSValueMakeNull(jsContext);
@@ -538,6 +556,18 @@ static const JSClassDefinition deviceDefinition =
   };
 
 
+static gboolean _ui_destroy_black_overlay(void* context)
+{
+  gtk_widget_destroy(g_uiBlackOverlay);
+
+  g_uiBlackOverlay = NULL;
+
+  g_uiReadyCallback();
+
+  return FALSE;
+}
+
+
 static void _uibind_objects(WebKitWebView* webkitWebView,
 			    WebKitWebFrame* webkitWebFrame,
 			    JSGlobalContextRef context,
@@ -563,5 +593,13 @@ static void _uibind_objects(WebKitWebView* webkitWebView,
 		      JSStringCreateWithUTF8CString("device"),
 		      deviceObject, kJSPropertyAttributeNone, NULL);
 
-  g_uiReadyCallback();
+  if (gtk_widget_get_parent_window(g_uiWebView) == NULL)
+    {
+      _ui_apply_main_window_settings();
+
+      gtk_container_add(GTK_CONTAINER(g_uiMainWindow), g_uiWebView);
+      gtk_widget_show(g_uiWebView);
+
+      g_timeout_add_seconds(2, _ui_destroy_black_overlay, NULL);
+    }
 }

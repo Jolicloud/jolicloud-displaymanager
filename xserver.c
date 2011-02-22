@@ -62,14 +62,37 @@ gboolean xserver_init(const char* display, xserver_callback xserverTerminated)
 
 void xserver_cleanup(void)
 {
+  int ret;
   int status;
+  int try = 0;
 
   if (g_xserverPid == 0)
     return;
 
+  g_source_remove(g_xserverPidWatcherId);
+
   kill(g_xserverPid, SIGTERM);
 
-  waitpid(g_xserverPid, &status, 0);
+  while (try < 5)
+    {
+      ++try;
+
+      if ((ret = waitpid(g_xserverPid, &status, 0)) == -1)
+	{
+	  if (errno == EINTR)
+	    continue;
+
+	  fprintf(stderr, "Jolicloud-DisplayManager: waitpid returned -1: errno %d [%s]\n", errno, strerror(errno));
+	  break;
+	}
+
+      if (WIFEXITED(status))
+	printf("X.Org exited, status=%d\n", WEXITSTATUS(status));
+      else if (WIFSIGNALED(status))
+	printf("X.Org killed, signal=%d\n", WTERMSIG(status));
+      else
+	printf("X.Org terminated with status %x\n", status);
+    }
 
   g_xserverPid = 0;
   g_xserverPidWatcherId = 0;
@@ -142,7 +165,12 @@ static void _xserver_pid_watcher(GPid pid, gint status, void* context)
   g_xserverPidWatcherId = 0;
   g_xserverPid = 0;
 
-  fprintf(stderr, "Jolicloud-DisplayManager: X closed with status %d\n", status);
+  if (WIFEXITED(status))
+    fprintf(stderr, "Jolicloud-DisplayManager: X.Org exited, status=%d\n", WEXITSTATUS(status));
+  else if (WIFSIGNALED(status))
+    fprintf(stderr, "Jolicloud-DisplayManager: X.Org killed, signal=%d\n", WTERMSIG(status));
+  else
+    fprintf(stderr, "Jolicloud-DisplayManager: X.Org terminated with status %x\n", status);
 
   g_xserverTerminated();
 }
