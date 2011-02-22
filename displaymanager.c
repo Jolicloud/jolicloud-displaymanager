@@ -324,9 +324,12 @@ static gboolean _dm_io_channel_watcher(GIOChannel* ioSource, GIOCondition ioCond
       break;
 
     default:
+      plymouth_show();
       fprintf(stderr, "Jolicloud-DisplayManager: signal %d received\n", signalInformation.signalNumber);
       session_cleanup();
+      plymouth_show();
       xserver_cleanup();
+      plymouth_show();
       /* g_main_loop_quit(g_dmMainLoop); */
       exit(1);
       break;
