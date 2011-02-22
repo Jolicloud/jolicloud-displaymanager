@@ -214,7 +214,7 @@ gboolean session_run(const struct passwd* passwdEntry)
   execle(passwdEntry->pw_shell,
 	 passwdEntry->pw_shell,
 	 "-c",
-	 config_user_logincmd_get(),
+	 loginCmd,
 	 NULL,
 	 userEnv);
 
