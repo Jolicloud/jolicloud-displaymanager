@@ -567,7 +567,7 @@ static void _dm_session_started(void)
   /* user session is starting.
      Hide the cursor and destroy the UI
   */
-  gdk_set_root_window_cursor(GDK_BLANK_CURSOR);
+  /* gdk_set_root_window_cursor(GDK_BLANK_CURSOR); */
 
   ui_cleanup();
 }

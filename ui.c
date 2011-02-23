@@ -59,8 +59,7 @@ gboolean ui_init(ui_callback readyCallback,
   GdkDisplay* display;
   GdkScreen* screen;
   GdkKeymap* keymap;
-  gint screenWidth;
-  gint screenHeight;
+  GdkRectangle screenRect;
   GdkColor colorBlack = { 0, };
 
   if (readyCallback == NULL || signinCallback == NULL)
@@ -76,8 +75,9 @@ gboolean ui_init(ui_callback readyCallback,
 
   display = gdk_display_get_default();
   screen = gdk_display_get_default_screen(display);
-  screenWidth = gdk_screen_get_width(screen);
-  screenHeight = gdk_screen_get_height(screen);
+  gdk_screen_get_monitor_geometry(screen,
+				  gdk_screen_get_primary_monitor(screen),
+				  &screenRect);
 
   keymap = gdk_keymap_get_for_display(display);
   if (keymap != NULL)
@@ -86,12 +86,14 @@ gboolean ui_init(ui_callback readyCallback,
 
   g_uiMainWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_widget_modify_bg(g_uiMainWindow, GTK_STATE_NORMAL, &colorBlack);
-  gtk_window_set_default_size(GTK_WINDOW(g_uiMainWindow), screenWidth, screenHeight);
+  gtk_window_move(GTK_WINDOW(g_uiMainWindow), screenRect.x, screenRect.y);
+  gtk_window_set_default_size(GTK_WINDOW(g_uiMainWindow), screenRect.width, screenRect.height);
   gtk_window_fullscreen(GTK_WINDOW(g_uiMainWindow));
 
   g_uiBlackOverlay = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_widget_modify_bg(g_uiBlackOverlay, GTK_STATE_NORMAL, &colorBlack);
-  gtk_window_set_default_size(GTK_WINDOW(g_uiBlackOverlay), screenWidth, screenHeight);
+  gtk_window_move(GTK_WINDOW(g_uiMainWindow), screenRect.x, screenRect.y);
+  gtk_window_set_default_size(GTK_WINDOW(g_uiBlackOverlay), screenRect.width, screenRect.height);
   gtk_window_fullscreen(GTK_WINDOW(g_uiBlackOverlay));
 
   /* disable close button (should not be available since we don't have any decoration!)
