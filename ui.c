@@ -9,7 +9,7 @@
 
 static GtkWidget* g_uiMainWindow = NULL;
 static GtkWidget* g_uiWebView = NULL;
-static GtkWidget* g_uiBlackOverlay = NULL;
+static gboolean g_uiPageLoaded = FALSE;
 
 static char* g_uiUsername = NULL;
 static char* g_uiPassword = NULL;
@@ -53,6 +53,16 @@ static void _ui_apply_main_window_settings(void)
 }
 
 
+static void _ui_load_page(WebKitWebView* webView, WebKitWebFrame* frame, gpointer data)
+{
+  if (g_uiPageLoaded == FALSE)
+    {
+      g_uiPageLoaded = TRUE;
+      webkit_web_view_load_uri(webView, config_theme_url_get());
+    }
+}
+
+
 gboolean ui_init(ui_callback readyCallback,
 		 ui_callback signinCallback)
 {
@@ -90,11 +100,7 @@ gboolean ui_init(ui_callback readyCallback,
   gtk_window_set_default_size(GTK_WINDOW(g_uiMainWindow), screenRect.width, screenRect.height);
   gtk_window_fullscreen(GTK_WINDOW(g_uiMainWindow));
 
-  g_uiBlackOverlay = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  gtk_widget_modify_bg(g_uiBlackOverlay, GTK_STATE_NORMAL, &colorBlack);
-  gtk_window_move(GTK_WINDOW(g_uiMainWindow), screenRect.x, screenRect.y);
-  gtk_window_set_default_size(GTK_WINDOW(g_uiBlackOverlay), screenRect.width, screenRect.height);
-  gtk_window_fullscreen(GTK_WINDOW(g_uiBlackOverlay));
+  _ui_apply_main_window_settings();
 
   /* disable close button (should not be available since we don't have any decoration!)
    */
@@ -108,19 +114,24 @@ gboolean ui_init(ui_callback readyCallback,
   */
 
   g_uiWebView = webkit_web_view_new();
-  gtk_widget_modify_bg(g_uiWebView, GTK_STATE_NORMAL, &colorBlack);
+  /* gtk_widget_modify_bg(g_uiWebView, GTK_STATE_NORMAL, &colorBlack); */
+  /* webkit_web_view_set_transparent(WEBKIT_WEB_VIEW(g_uiWebView), TRUE); */
+  g_signal_connect(G_OBJECT(g_uiWebView), "load-finished", G_CALLBACK(_ui_load_page), NULL);
   g_signal_connect(G_OBJECT(g_uiWebView),
   		   "window-object-cleared",
   		   G_CALLBACK(_uibind_objects),
   		   NULL);
 
-  /* gtk_container_add(GTK_CONTAINER(g_uiMainWindow), g_uiWebView); */
+  gtk_container_add(GTK_CONTAINER(g_uiMainWindow), g_uiWebView);
 
-  webkit_web_view_load_uri(WEBKIT_WEB_VIEW(g_uiWebView),
-			   config_theme_url_get());
+  webkit_web_view_load_string(WEBKIT_WEB_VIEW(g_uiWebView),
+  			      "<html><head></head><body style='background-color: black;'></body></html>",
+  			      "text/html", "UTF-8", "");
+
+  /* webkit_web_view_load_uri(WEBKIT_WEB_VIEW(g_uiWebView), */
+  /* 			   config_theme_url_get()); */
 
   gtk_widget_show_all(g_uiMainWindow);
-  gtk_widget_show_all(g_uiBlackOverlay);
 
   gdk_keyboard_grab(g_uiMainWindow->window, FALSE, GDK_CURRENT_TIME);
 
@@ -157,6 +168,7 @@ void ui_cleanup(void)
 
   g_uiMainWindow = NULL;
   g_uiWebView = NULL;
+  g_uiPageLoaded = FALSE;
 
   if (g_uiUsername != NULL)
     {
@@ -558,18 +570,6 @@ static const JSClassDefinition deviceDefinition =
   };
 
 
-static gboolean _ui_destroy_black_overlay(void* context)
-{
-  gtk_widget_destroy(g_uiBlackOverlay);
-
-  g_uiBlackOverlay = NULL;
-
-  g_uiReadyCallback();
-
-  return FALSE;
-}
-
-
 static void _uibind_objects(WebKitWebView* webkitWebView,
 			    WebKitWebFrame* webkitWebFrame,
 			    JSGlobalContextRef context,
@@ -594,14 +594,4 @@ static void _uibind_objects(WebKitWebView* webkitWebView,
 		      JSContextGetGlobalObject(context),
 		      JSStringCreateWithUTF8CString("device"),
 		      deviceObject, kJSPropertyAttributeNone, NULL);
-
-  if (gtk_widget_get_parent_window(g_uiWebView) == NULL)
-    {
-      _ui_apply_main_window_settings();
-
-      gtk_container_add(GTK_CONTAINER(g_uiMainWindow), g_uiWebView);
-      gtk_widget_show(g_uiWebView);
-
-      g_timeout_add_seconds(2, _ui_destroy_black_overlay, NULL);
-    }
 }

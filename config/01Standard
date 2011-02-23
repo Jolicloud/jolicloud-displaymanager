@@ -6,7 +6,7 @@ logfile=/var/log/jolicloud-displaymanager.log
 xauth=/usr/bin/xauth
 xauthfile=/var/run/jolicloud-displaymanager.auth
 xserver=/usr/bin/X11/X
-xserverargs=-verbose -nolisten tcp vt01
+xserverargs=-br -nolisten tcp vt01
 sessreg=/usr/bin/sessreg
 
 [theme]

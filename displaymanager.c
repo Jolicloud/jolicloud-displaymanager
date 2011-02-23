@@ -81,11 +81,9 @@ static void plymouth_hide(void)
  */
 static void gdk_set_root_window_cursor(GdkCursorType cursorType)
 {
-  GdkDisplay* display;
   GdkCursor* cursor;
   GdkWindow* root;
 
-  display = gdk_display_get_default();
   cursor = gdk_cursor_new(cursorType);
   root = gdk_get_default_root_window();
   gdk_window_set_cursor(root, cursor);
@@ -205,6 +203,10 @@ void dm_run(void)
       */
 
       g_dmReload = FALSE;
+
+      /* cleaning up user session from pam
+       */
+      pam_session_close();
 
       plymouth_show();
 
@@ -581,12 +583,6 @@ static void _dm_session_closed(void)
   g_dmReload = TRUE;
 
   gdk_set_root_window_cursor(GDK_BLANK_CURSOR);
-
-  /* cleaning up user session from pam
-   */
-  pam_session_close();
-
-  plymouth_show();
 
   /* ask to quit the main loop to avoid any glitch
      (see dm_run() routine to understand)
