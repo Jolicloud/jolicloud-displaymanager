@@ -582,7 +582,7 @@ static void _dm_session_closed(void)
 
   g_dmReload = TRUE;
 
-  gdk_set_root_window_cursor(GDK_BLANK_CURSOR);
+  /* gdk_set_root_window_cursor(GDK_BLANK_CURSOR); */
 
   /* ask to quit the main loop to avoid any glitch
      (see dm_run() routine to understand)

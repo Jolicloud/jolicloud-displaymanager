@@ -59,6 +59,7 @@ static void _ui_load_page(WebKitWebView* webView, WebKitWebFrame* frame, gpointe
     {
       g_uiPageLoaded = TRUE;
       webkit_web_view_load_uri(webView, config_theme_url_get());
+      g_uiReadyCallback();
     }
 }
 
