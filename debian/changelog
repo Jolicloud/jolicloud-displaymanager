@@ -1,5 +1,5 @@
-jolicloud-displaymanager (1.0~1.gbp97a0d6) UNRELEASED; urgency=low
+jolicloud-displaymanager (1.2) robby; urgency=low
 
   * Initial release.
 
- -- Arnaud Vallat <arnaud@jolicloud.org>  Thu, 03 Feb 2011 11:40:37 +0100
+ -- Arnaud Vallat <arnaud@jolicloud.org>  Thu, 25 Feb 2011 11:40:37 +0100
