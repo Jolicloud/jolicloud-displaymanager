@@ -1,3 +1,9 @@
+jolicloud-displaymanager (1.2.1) robby; urgency=low
+
+  * Fixed configuration file parsing
+
+ -- Arnaud Vallat <arnaud@jolicloud.org>  Thu, 25 Feb 2011 11:40:37 +0100
+
 jolicloud-displaymanager (1.2) robby; urgency=low
 
   * Initial release.
