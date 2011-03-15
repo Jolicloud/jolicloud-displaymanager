@@ -1,3 +1,9 @@
+jolicloud-displaymanager (1.2.2) robby; urgency=low
+
+  * Force deletion of slim
+
+ -- Arnaud Vallat <arnaud@jolicloud.org>  Thu, 15 Mar 2011 15:25:42 +0100
+
 jolicloud-displaymanager (1.2.1) robby; urgency=low
 
   * Fixed configuration file parsing

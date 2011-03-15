@@ -10,7 +10,6 @@ Vcs-Browser: https://github.com/jolicloud/jolicloud-displaymanager
 
 Package: jolicloud-displaymanager
 Architecture: any
-Provides: x-display-manager
 Depends: ${shlibs:Depends}, ${misc:Depends}, libpam0g, libwebkit-1.0-2
 Provides: slim
 Conflicts: slim
