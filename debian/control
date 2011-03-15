@@ -12,5 +12,8 @@ Package: jolicloud-displaymanager
 Architecture: any
 Provides: x-display-manager
 Depends: ${shlibs:Depends}, ${misc:Depends}, libpam0g, libwebkit-1.0-2
+Provides: slim
+Conflicts: slim
+Replaces: slim
 Description: Jolicloud Display Manager
  This package includes an HTML5 Display Manager.
