@@ -11,8 +11,8 @@ Vcs-Browser: https://github.com/jolicloud/jolicloud-displaymanager
 Package: jolicloud-displaymanager
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libpam0g, libwebkit-1.0-2
-Provides: slim
-Conflicts: slim
-Replaces: slim
+Provides: slim, jolicloud-slim-theme
+Conflicts: slim, jolicloud-slim-theme
+Replaces: slim, jolicloud-slim-theme
 Description: Jolicloud Display Manager
  This package includes an HTML5 Display Manager.
